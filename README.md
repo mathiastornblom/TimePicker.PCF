@@ -6,7 +6,7 @@ It renders a themed input with a searchable list of times, and stores the result
 whole number columns so the value is plain wall-clock time with no time zone
 conversion applied anywhere.
 
-![alt text](https://github.com/drivardxrm/TimePicker.PCF/blob/master/timepicker.png?raw=true)
+![The picker open, showing hour and minute wheels side by side](timepicker-v2.png)
 
 ## Supported hosts
 
@@ -43,6 +43,9 @@ rather than a requirement.
 | `displaytype` | `12 hrs`, `24 hrs`, or `Auto` to follow the user's regional settings | 24 hrs |
 | `fieldappearance` | `outline`, `underline`, `filled-darker` or `filled-lighter` | outline |
 | `placeholdertext` | Text shown when no time is set | none |
+| `showunits` | Show a unit beside the centred row of each wheel | true |
+| `hourunittext` | Text beside the hour wheel | `hours`, blank in 12 hour display |
+| `minuteunittext` | Text beside the minute wheel | `min` |
 | `hourstep` | Interval between selectable hours | 1 |
 | `minutestep` | Interval between selectable minutes. Use 60 for whole hours only | 1 |
 | `minhour` | First selectable hour, 0-23 | 0 |
@@ -51,9 +54,24 @@ rather than a requirement.
 | `showclear` | Show a button that clears the value | true |
 | `defaulttime` | `Nothing`, or `Current time` to show the user's local time as the placeholder | Nothing |
 
-The list of times always opens at the current time when the field is empty, so local
-time is the first thing the user sees. The current time comes from the Dataverse
-user's own time zone when the host exposes it, and from the browser clock otherwise.
+The picker is two wheels side by side, hours and minutes, in the style of an iOS
+picker. Rows snap to a band in the middle and fade out towards the top and bottom.
+Choosing on either wheel writes the whole time, so an hour can never be stored without
+its minute.
+
+Both wheels open on the current time when the field is empty, so local time is the
+first thing the user sees. The current time comes from the Dataverse user's own time
+zone when the host exposes it, and from the browser clock otherwise. A stored value
+that falls outside the configured hour window, or off the step, is folded into the
+wheel so the user can still see what is selected.
+
+Scrolling is the primary interaction, but each wheel is a real listbox: rows can be
+clicked, and arrow keys, Page Up and Page Down, Home and End all work.
+
+The centred row carries a unit label, reading `18 hours` and `10 min`. Both labels are
+configurable for wording and language, and can be turned off entirely. In 12 hour
+display the hour label defaults to blank, because the AM/PM designator already says
+what the column is.
 
 With `editenabled` on, the field accepts `18:30`, `18.30`, `1830`, `830`, `18`,
 `6:30 pm` and `6pm`. Text that cannot be understood is discarded and the field falls

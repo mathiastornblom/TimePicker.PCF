@@ -17,3 +17,6 @@
 
 # local dev harness config
 /.claude
+
+# playwright mcp scratch output
+/.playwright-mcp

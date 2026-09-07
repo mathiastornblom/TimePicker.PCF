@@ -1,15 +1,18 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {
-    buildOptions,
+    buildHours,
+    buildMinutes,
     columnsToValue,
+    formatHour,
+    formatMinute,
     formatTime,
     fromParts,
     nearestOption,
     nowMinutesOfDay,
     parseTime,
     toParts,
-    use12HourFromPattern,
+    is12HourPattern,
     valueToColumns,
     wrapMinutes
 } from "./time.ts";
@@ -64,15 +67,39 @@ test("single-column mode never writes to the minute column", () => {
     assert.deepEqual(valueToColumns(1110, "minutesfrommidnight"), { hourvalue: 1110, minutevalue: undefined });
 });
 
-test("options honour both the hour step and the minute step", () => {
-    assert.equal(buildOptions({}).length, 24 * 60);
-    assert.deepEqual(buildOptions({ hourStep: 1, minuteStep: 30, minHour: 9, maxHour: 10 }), [540, 570, 600, 630]);
-    assert.deepEqual(buildOptions({ hourStep: 2, minuteStep: 60, minHour: 0, maxHour: 5 }), [0, 120, 240]);
+test("the hour wheel honours the step and the window", () => {
+    assert.equal(buildHours({}).length, 24);
+    assert.deepEqual(buildHours({ minHour: 9, maxHour: 12 }), [9, 10, 11, 12]);
+    assert.deepEqual(buildHours({ hourStep: 2, minHour: 0, maxHour: 5 }), [0, 2, 4]);
 });
 
-test("options survive a reversed or out-of-range hour window", () => {
-    assert.deepEqual(buildOptions({ minuteStep: 60, minHour: 10, maxHour: 8 }), [480, 540, 600]);
-    assert.deepEqual(buildOptions({ minuteStep: 60, minHour: -5, maxHour: 99 }).length, 24);
+test("the minute wheel honours the step", () => {
+    assert.equal(buildMinutes({}).length, 60);
+    assert.deepEqual(buildMinutes({ minuteStep: 15 }), [0, 15, 30, 45]);
+    assert.deepEqual(buildMinutes({ minuteStep: 60 }), [0]);
+});
+
+test("wheels survive a reversed or out-of-range hour window", () => {
+    assert.deepEqual(buildHours({ minHour: 10, maxHour: 8 }), [8, 9, 10]);
+    assert.equal(buildHours({ minHour: -5, maxHour: 99 }).length, 24);
+});
+
+test("a stored value off the step stays visible on the wheel", () => {
+    // Otherwise the user sees a picker with nothing selected.
+    assert.deepEqual(buildMinutes({ minuteStep: 15, include: 37 }), [0, 15, 30, 37, 45]);
+    assert.deepEqual(buildHours({ minHour: 9, maxHour: 11, include: 3 }), [3, 9, 10, 11]);
+    assert.deepEqual(buildMinutes({ minuteStep: 15, include: 30 }), [0, 15, 30, 45]);
+    assert.deepEqual(buildMinutes({ minuteStep: 15, include: null }), [0, 15, 30, 45]);
+});
+
+test("wheel labels read the way each column should", () => {
+    assert.equal(formatHour(18, { use12Hours: false }), "18");
+    assert.equal(formatHour(9, { use12Hours: false }), "09");
+    assert.equal(formatHour(18, { use12Hours: true }), "6 PM");
+    assert.equal(formatHour(0, { use12Hours: true }), "12 AM");
+    assert.equal(formatHour(12, { use12Hours: true }), "12 PM");
+    assert.equal(formatMinute(5), "05");
+    assert.equal(formatMinute(30), "30");
 });
 
 test("nearestOption picks the closest slot", () => {
@@ -142,16 +169,16 @@ test("current time falls back to the browser clock", () => {
 });
 
 test("the user's short time pattern decides 12 versus 24 hour display", () => {
-    assert.equal(use12HourFromPattern("h:mm tt"), true);
-    assert.equal(use12HourFromPattern("HH:mm"), false);
-    assert.equal(use12HourFromPattern("H.mm"), false);
-    assert.equal(use12HourFromPattern(undefined), null);
+    assert.equal(is12HourPattern("h:mm tt"), true);
+    assert.equal(is12HourPattern("HH:mm"), false);
+    assert.equal(is12HourPattern("H.mm"), false);
+    assert.equal(is12HourPattern(undefined), null);
 });
 
 test("an unset latest hour is not read as a midnight-only window", () => {
     // Hosts hand back 0 for a whole number input the maker never filled in.
-    assert.equal(buildOptions({ maxHour: 0, minuteStep: 60 }).length, 24);
-    assert.equal(buildOptions({ maxHour: null, minuteStep: 60 }).length, 24);
-    assert.equal(buildOptions({ maxHour: -1, minuteStep: 60 }).length, 24);
-    assert.equal(buildOptions({ maxHour: 5, minuteStep: 60 }).length, 6);
+    assert.equal(buildHours({ maxHour: 0 }).length, 24);
+    assert.equal(buildHours({ maxHour: null }).length, 24);
+    assert.equal(buildHours({ maxHour: -1 }).length, 24);
+    assert.equal(buildHours({ maxHour: 5 }).length, 6);
 });

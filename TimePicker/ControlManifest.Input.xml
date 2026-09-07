@@ -29,6 +29,13 @@
 
     <property name="placeholdertext" display-name-key="Placeholder" description-key="(Optional) Text shown when no time is set" of-type="SingleLine.Text" usage="input" required="false" />
 
+    <property name="showunits" display-name-key="Show Unit Labels" description-key="Show a unit beside the selected row of each wheel, as '18 hours' (default = true)" of-type="Enum" usage="input" required="false">
+      <value name="true" display-name-key="true" description-key="True" default="true">true</value>
+      <value name="false" display-name-key="false" description-key="False">false</value>
+    </property>
+    <property name="hourunittext" display-name-key="Hour Unit Label" description-key="(Optional) Text beside the hour wheel. Default 'hours', and blank in 12 hour display where AM/PM already labels it." of-type="SingleLine.Text" usage="input" required="false" />
+    <property name="minuteunittext" display-name-key="Minute Unit Label" description-key="(Optional) Text beside the minute wheel. Default 'min'." of-type="SingleLine.Text" usage="input" required="false" />
+
     <!-- Selectable range and granularity -->
     <property name="hourstep" display-name-key="Hour Step" description-key="(Optional) Interval between selectable hours. Default 1." of-type="Whole.None" usage="input" required="false" />
     <property name="minutestep" display-name-key="Minute Step" description-key="(Optional) Interval between selectable minutes. Default 1. Use 60 for whole hours only." of-type="Whole.None" usage="input" required="false" />

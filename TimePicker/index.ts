@@ -6,11 +6,13 @@ import type { Theme } from "@fluentui/react-components";
 import TimePickerControl from "./components/TimePickerControl";
 import type { FieldAppearance } from "./components/TimePickerControl";
 import {
-    buildOptions,
+    buildHours,
+    buildMinutes,
     columnsToValue,
     formatTime,
     nowMinutesOfDay,
-    use12HourFromPattern,
+    toParts,
+    is12HourPattern,
     valueToColumns
 } from "./lib/time";
 import type { ColumnValues, FormatOptions, StorageMode } from "./lib/time";
@@ -40,8 +42,9 @@ export class TimePicker implements ComponentFramework.StandardControl<IInputs, I
     private storageMode: StorageMode = "hoursandminutes";
     private outputs: ColumnValues = { hourvalue: undefined, minutevalue: undefined };
 
-    private cachedOptions: readonly number[] = [];
-    private cachedOptionsKey = "";
+    private cachedHours: readonly number[] = [];
+    private cachedMinutes: readonly number[] = [];
+    private cachedRangeKey = "";
 
     public init(
         context: ComponentFramework.Context<IInputs>,
@@ -81,7 +84,16 @@ export class TimePicker implements ComponentFramework.StandardControl<IInputs, I
 
         const format = this.readFormat(context);
         const nowMinutes = this.readNow(context);
-        const options = this.readOptions(context);
+        const { hours, minutes } = this.readRanges(context, this.value);
+
+        // Unit labels beside the centred row. In 12 hour display the hour wheel
+        // already reads "6 PM", so its unit defaults to nothing rather than to
+        // "6 PM hours"; an explicit label still wins.
+        const showUnits = readBoolEnum(parameters.showunits?.raw, true);
+        const hourUnit = showUnits
+            ? (parameters.hourunittext?.raw || (format.use12Hours ? "" : "hours"))
+            : "";
+        const minuteUnit = showUnits ? (parameters.minuteunittext?.raw || "min") : "";
 
         const placeholder =
             parameters.placeholdertext?.raw ||
@@ -94,8 +106,11 @@ export class TimePicker implements ComponentFramework.StandardControl<IInputs, I
             { theme: this.readTheme(context), style: { width: "100%" } },
             React.createElement(TimePickerControl, {
                 value: this.value,
-                options,
+                hours,
+                minutes,
                 format,
+                hourUnit,
+                minuteUnit,
                 nowMinutes,
                 disabled,
                 masked,
@@ -143,7 +158,7 @@ export class TimePicker implements ComponentFramework.StandardControl<IInputs, I
 
         let use12Hours: boolean;
         if (displayType === "auto") {
-            use12Hours = use12HourFromPattern(formatting?.shortTimePattern) ?? false;
+            use12Hours = is12HourPattern(formatting?.shortTimePattern) ?? false;
         } else {
             use12Hours = displayType === "12 hrs";
         }
@@ -171,20 +186,40 @@ export class TimePicker implements ComponentFramework.StandardControl<IInputs, I
         return nowMinutesOfDay(offset);
     }
 
-    /** Rebuilding 1440 options on every render is wasteful, so cache on the inputs. */
-    private readOptions(context: ComponentFramework.Context<IInputs>): readonly number[] {
+    /**
+     * The hour and minute wheels. Rebuilding them on every render is wasteful, so
+     * they are cached against the inputs that shape them. A stored value that falls
+     * outside the configured window, or off the step, is folded in so the user can
+     * still see what is selected.
+     */
+    private readRanges(
+        context: ComponentFramework.Context<IInputs>,
+        value: number | null
+    ): { hours: readonly number[]; minutes: readonly number[] } {
         const parameters = context.parameters;
-        const range = {
+        const parts = value === null ? null : toParts(value);
+        const shape = {
             hourStep: parameters.hourstep?.raw,
             minuteStep: parameters.minutestep?.raw,
             minHour: parameters.minhour?.raw,
-            maxHour: parameters.maxhour?.raw
+            maxHour: parameters.maxhour?.raw,
+            includeHour: parts?.hours ?? null,
+            includeMinute: parts?.minutes ?? null
         };
-        const key = JSON.stringify(range);
-        if (key !== this.cachedOptionsKey) {
-            this.cachedOptions = buildOptions(range);
-            this.cachedOptionsKey = key;
+        const key = JSON.stringify(shape);
+        if (key !== this.cachedRangeKey) {
+            this.cachedHours = buildHours({
+                hourStep: shape.hourStep,
+                minHour: shape.minHour,
+                maxHour: shape.maxHour,
+                include: shape.includeHour
+            });
+            this.cachedMinutes = buildMinutes({
+                minuteStep: shape.minuteStep,
+                include: shape.includeMinute
+            });
+            this.cachedRangeKey = key;
         }
-        return this.cachedOptions;
+        return { hours: this.cachedHours, minutes: this.cachedMinutes };
     }
 }

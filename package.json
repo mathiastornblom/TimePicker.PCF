@@ -22,6 +22,7 @@
     "@types/react-dom": "^18.2.10",
     "eslint": "^9.13.0",
     "eslint-plugin-react": "^7.37.2",
+    "eslint-plugin-react-hooks": "^5.2.0",
     "pcf-scripts": "^1.51.1",
     "pcf-start": "^1.51.1",
     "typescript-eslint": "^8.11.0"

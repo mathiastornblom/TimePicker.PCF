@@ -90,24 +90,40 @@ function clampInt(value: number | null | undefined, min: number, max: number, fa
     return Math.min(max, Math.max(min, Math.trunc(value)));
 }
 
-export interface OptionRange {
+export interface HourRange {
     hourStep?: number | null;
-    minuteStep?: number | null;
     minHour?: number | null;
     maxHour?: number | null;
+    /** Always include this hour, so a stored value outside the configured window stays visible. */
+    include?: number | null;
+}
+
+export interface MinuteRange {
+    minuteStep?: number | null;
+    /** Always include this minute, so a stored value off the step stays visible. */
+    include?: number | null;
+}
+
+function withIncluded(values: number[], include: number | null | undefined, min: number, max: number): number[] {
+    if (include === null || include === undefined || !Number.isFinite(include)) {
+        return values;
+    }
+    const extra = Math.trunc(include);
+    if (extra < min || extra > max || values.includes(extra)) {
+        return values;
+    }
+    return [...values, extra].sort((a, b) => a - b);
 }
 
 /**
- * Build the selectable list of times, as minutes of day, in ascending order.
+ * Selectable hours, 0-23.
  *
- * Every input is treated as a hint rather than a promise. Hosts hand back 0 for
- * a whole number input the maker never filled in, so a zero or negative
- * "latest hour" is read as "not configured" rather than as a window containing
- * only midnight.
+ * Every input is treated as a hint rather than a promise. Hosts hand back 0 for a
+ * whole number input the maker never filled in, so a zero or negative "latest hour"
+ * is read as "not configured" rather than as a window containing only midnight.
  */
-export function buildOptions(range: OptionRange): number[] {
+export function buildHours(range: HourRange): number[] {
     const hourStep = clampInt(range.hourStep, 1, 24, 1);
-    const minuteStep = clampInt(range.minuteStep, 1, 60, 1);
     const first = clampInt(range.minHour, 0, 23, 0);
     const maxHourRaw = range.maxHour;
     const last =
@@ -117,13 +133,21 @@ export function buildOptions(range: OptionRange): number[] {
     const lo = Math.min(first, last);
     const hi = Math.max(first, last);
 
-    const options: number[] = [];
+    const hours: number[] = [];
     for (let h = lo; h <= hi; h += hourStep) {
-        for (let m = 0; m < 60; m += minuteStep) {
-            options.push(h * 60 + m);
-        }
+        hours.push(h);
     }
-    return options;
+    return withIncluded(hours, range.include, 0, 23);
+}
+
+/** Selectable minutes, 0-59. */
+export function buildMinutes(range: MinuteRange): number[] {
+    const minuteStep = clampInt(range.minuteStep, 1, 60, 1);
+    const minutes: number[] = [];
+    for (let m = 0; m < 60; m += minuteStep) {
+        minutes.push(m);
+    }
+    return withIncluded(minutes, range.include, 0, 59);
 }
 
 /** The option closest to `target`, or null when there are no options. */
@@ -169,6 +193,23 @@ export function formatTime(minutesOfDay: number, options: FormatOptions): string
  * Accepts "18:30", "18.30", "18 30", "1830", "830", "18", "6:30 pm", "6pm"
  * and ignores any seconds component.
  */
+/** Label for the hour column: "18" in 24 hour mode, "6 PM" in 12 hour mode. */
+export function formatHour(hours: number, options: FormatOptions): string {
+    const h = ((Math.trunc(hours) % 24) + 24) % 24;
+    if (!options.use12Hours) {
+        return String(h).padStart(2, "0");
+    }
+    const designator = h < 12 ? (options.amDesignator || "AM") : (options.pmDesignator || "PM");
+    const hour12 = h % 12 === 0 ? 12 : h % 12;
+    return `${hour12} ${designator}`.trimEnd();
+}
+
+/** Label for the minute column, always two digits. */
+export function formatMinute(minutes: number): string {
+    const m = ((Math.trunc(minutes) % 60) + 60) % 60;
+    return String(m).padStart(2, "0");
+}
+
 export function parseTime(input: string, options: FormatOptions): number | null {
     if (typeof input !== "string") {
         return null;
@@ -249,8 +290,12 @@ export function nowMinutesOfDay(offsetMinutesFromUtc?: number | null, now: Date 
     return wrapMinutes(now.getUTCHours() * 60 + now.getUTCMinutes() + offsetMinutesFromUtc);
 }
 
-/** Decide 12 vs 24 hour display from the user's own short time pattern. */
-export function use12HourFromPattern(shortTimePattern: string | undefined): boolean | null {
+/**
+ * Decide 12 vs 24 hour display from the user's own short time pattern.
+ * Quoted literals are stripped first, so a pattern like "HH't'mm" is not mistaken
+ * for one carrying an AM/PM designator.
+ */
+export function is12HourPattern(shortTimePattern: string | undefined): boolean | null {
     if (!shortTimePattern) {
         return null;
     }

@@ -1,25 +1,60 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <manifest>
-  <control namespace="DR" constructor="TimePicker" version="1.0.17" display-name-key="TimePicker" description-key="TimePicker control based on React time Picker (rc-time-picker)" control-type="standard" preview-image="img/timepicker-preview.png"> 
-    <!-- property node identifies a specific, configurable piece of data that the control expects from CDS -->
-    <property name="hourvalue" display-name-key="Hour Value Field" description-key="Bind this property to the field where you want to store the hour value" of-type="Whole.None" usage="bound" required="true" />
-    <property name="minutevalue" display-name-key="Minute Value Field" description-key="Bind this property to the field where you want to store the minute value" of-type="Whole.None" usage="bound" required="true" />
+  <control namespace="DR" constructor="TimePicker" version="2.0.0" display-name-key="TimePicker" description-key="Time picker control for model-driven apps, canvas apps and Power Pages" control-type="standard" preview-image="img/timepicker-preview.png">
 
-    <property name="displaytype" display-name-key="Display Type" description-key="Display : 24 hrs or 12 hrs based" of-type="Enum" usage="input" required="true">
+    <!-- Storage. In the default 'hoursandminutes' mode both columns are used and
+         both are always written together. In 'minutesfrommidnight' mode only
+         hourvalue is used, for makers who would rather bind one column than two. -->
+    <property name="hourvalue" display-name-key="Hour Value Field" description-key="Bind to the whole number column holding the hour. In 'Minutes from midnight' storage mode this column holds the whole time instead." of-type="Whole.None" usage="bound" required="true" />
+    <property name="minutevalue" display-name-key="Minute Value Field" description-key="Bind to the whole number column holding the minute. Leave unbound when using 'Minutes from midnight' storage mode." of-type="Whole.None" usage="bound" required="false" />
+
+    <property name="storagemode" display-name-key="Storage Mode" description-key="How the time is stored. 'Hours and minutes' uses both columns. 'Minutes from midnight' uses only the hour column, so you bind one column instead of two." of-type="Enum" usage="input" required="false">
+      <value name="hoursandminutes" display-name-key="Hours and minutes (2 columns)" description-key="Hours and minutes" default="true">hoursandminutes</value>
+      <value name="minutesfrommidnight" display-name-key="Minutes from midnight (1 column)" description-key="Minutes from midnight">minutesfrommidnight</value>
+    </property>
+
+    <!-- Display -->
+    <property name="displaytype" display-name-key="Display Type" description-key="Display : 24 hrs, 12 hrs, or follow the user's regional settings" of-type="Enum" usage="input" required="true">
       <value name="12hrs" display-name-key="12hrs" description-key="12hrs">12 hrs</value>
       <value name="24hrs" display-name-key="24hrs" description-key="24hrs" default="true">24 hrs</value>
+      <value name="auto" display-name-key="Auto (user setting)" description-key="Follow the user's regional settings">auto</value>
     </property>
-    <property name="hourstep" display-name-key="Hour Step" description-key="(Optional) Step for hour selector. default = 1" of-type="Whole.None" usage="input" required="false" />
-    <property name="minutestep" display-name-key="Minute Step" description-key="(Optional) Step for minute selector. default = 1" of-type="Whole.None" usage="input" required="false" />
-    <property name="editenabled" display-name-key="Edit Enabled" description-key="Manual edit enabled (default = false)" of-type="Enum" usage="input" required="true">
-      <value name="true" display-name-key="true" description-key="True" >true</value>
+
+    <property name="fieldappearance" display-name-key="Field Appearance" description-key="Visual style of the input, matching the surrounding form" of-type="Enum" usage="input" required="false">
+      <value name="outline" display-name-key="Outline" description-key="Outline" default="true">outline</value>
+      <value name="underline" display-name-key="Underline" description-key="Underline">underline</value>
+      <value name="filled-darker" display-name-key="Filled darker" description-key="Filled darker">filled-darker</value>
+      <value name="filled-lighter" display-name-key="Filled lighter" description-key="Filled lighter">filled-lighter</value>
+    </property>
+
+    <property name="placeholdertext" display-name-key="Placeholder" description-key="(Optional) Text shown when no time is set" of-type="SingleLine.Text" usage="input" required="false" />
+
+    <!-- Selectable range and granularity -->
+    <property name="hourstep" display-name-key="Hour Step" description-key="(Optional) Interval between selectable hours. Default 1." of-type="Whole.None" usage="input" required="false" />
+    <property name="minutestep" display-name-key="Minute Step" description-key="(Optional) Interval between selectable minutes. Default 1. Use 60 for whole hours only." of-type="Whole.None" usage="input" required="false" />
+    <property name="minhour" display-name-key="Earliest Hour" description-key="(Optional) First selectable hour, 0-23. Default 0." of-type="Whole.None" usage="input" required="false" />
+    <property name="maxhour" display-name-key="Latest Hour" description-key="(Optional) Last selectable hour, 0-23. Default 23." of-type="Whole.None" usage="input" required="false" />
+
+    <!-- Behaviour -->
+    <property name="editenabled" display-name-key="Edit Enabled" description-key="Allow the user to type a time as well as pick one (default = false)" of-type="Enum" usage="input" required="true">
+      <value name="true" display-name-key="true" description-key="True">true</value>
       <value name="false" display-name-key="false" description-key="False" default="true">false</value>
+    </property>
+
+    <property name="showclear" display-name-key="Show Clear Button" description-key="Show a button that clears the value (default = true)" of-type="Enum" usage="input" required="false">
+      <value name="true" display-name-key="true" description-key="True" default="true">true</value>
+      <value name="false" display-name-key="false" description-key="False">false</value>
+    </property>
+
+    <property name="defaulttime" display-name-key="Empty Field Hint" description-key="What an empty field suggests. 'Current time' shows the user's local time as the placeholder. The list always opens at the current time." of-type="Enum" usage="input" required="false">
+      <value name="empty" display-name-key="Nothing" description-key="Nothing" default="true">empty</value>
+      <value name="now" display-name-key="Current time" description-key="Current time">now</value>
     </property>
 
     <resources>
       <code path="index.ts" order="1"/>
       <css path="css/TimePicker.css" order="1" />
     </resources>
-    
+
   </control>
 </manifest>

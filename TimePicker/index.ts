@@ -1,122 +1,190 @@
-import {IInputs, IOutputs} from "./generated/ManifestTypes";
-import { createElement } from 'react';
-import { createRoot, Root } from 'react-dom/client';
-import TimePickerTextBox , {IProps} from "./TimePickerTextBox";
+import { IInputs, IOutputs } from "./generated/ManifestTypes";
+import * as React from "react";
+import { createRoot, Root } from "react-dom/client";
+import { FluentProvider, webLightTheme } from "@fluentui/react-components";
+import type { Theme } from "@fluentui/react-components";
+import TimePickerControl from "./components/TimePickerControl";
+import type { FieldAppearance } from "./components/TimePickerControl";
+import {
+    buildOptions,
+    columnsToValue,
+    formatTime,
+    nowMinutesOfDay,
+    use12HourFromPattern,
+    valueToColumns
+} from "./lib/time";
+import type { ColumnValues, FormatOptions, StorageMode } from "./lib/time";
+
+const APPEARANCES: readonly FieldAppearance[] = ["outline", "underline", "filled-darker", "filled-lighter"];
+
+/** Enum inputs arrive as null when the maker never configured them. */
+function readEnum<T extends string>(raw: string | null | undefined, allowed: readonly T[], fallback: T): T {
+    return allowed.includes(raw as T) ? (raw as T) : fallback;
+}
+
+function readBoolEnum(raw: string | null | undefined, fallback: boolean): boolean {
+    if (raw === "true") {
+        return true;
+    }
+    if (raw === "false") {
+        return false;
+    }
+    return fallback;
+}
 
 export class TimePicker implements ComponentFramework.StandardControl<IInputs, IOutputs> {
+    private root: Root | undefined;
+    private notifyOutputChanged: () => void = () => undefined;
 
-	private _root: Root;
-	private _hourvalue:number|undefined;
-	private _minutevalue:number|undefined;
-	private _notifyOutputChanged:() => void;
-	private _props: IProps = { hourvalue : undefined, 
-								minutevalue : undefined,
-								readonly:false,
-								masked:false, 
-								format:"h:mm a",
-								use12Hours:true,
-								hourstep:1,
-								minutestep:1,
-								editenabled:false,
+    private value: number | null = null;
+    private storageMode: StorageMode = "hoursandminutes";
+    private outputs: ColumnValues = { hourvalue: undefined, minutevalue: undefined };
 
-								onChange : this.notifyChange.bind(this) };
-	
-	/**
-	 * Empty constructor.
-	 */
-	constructor()
-	{
+    private cachedOptions: readonly number[] = [];
+    private cachedOptionsKey = "";
 
-	}
+    public init(
+        context: ComponentFramework.Context<IInputs>,
+        notifyOutputChanged: () => void,
+        state: ComponentFramework.Dictionary,
+        container: HTMLDivElement
+    ): void {
+        this.notifyOutputChanged = notifyOutputChanged;
+        container.style.width = "100%";
+        this.root = createRoot(container);
+    }
 
-	/**
-	 * Used to initialize the control instance. Controls can kick off remote server calls and other initialization actions here.
-	 * Data-set values are not initialized here, use updateView.
-	 * @param context The entire property bag available to control via Context Object; It contains values as set up by the customizer mapped to property names defined in the manifest, as well as utility functions.
-	 * @param notifyOutputChanged A callback method to alert the framework that the control has new outputs ready to be retrieved asynchronously.
-	 * @param state A piece of data that persists in one session for a single user. Can be set at any point in a controls life cycle by calling 'setControlState' in the Mode interface.
-	 * @param container If a control is marked control-type='standard', it will receive an empty div element within which it can render its content.
-	 */
-	public init(context: ComponentFramework.Context<IInputs>, 
-				notifyOutputChanged: () => void, 
-				state: ComponentFramework.Dictionary, 
-				container:HTMLDivElement)
-	{
-		// Add control initialization code
-		this._notifyOutputChanged = notifyOutputChanged;
-		this._root = createRoot(container!)
+    public updateView(context: ComponentFramework.Context<IInputs>): void {
+        const parameters = context.parameters;
 
-	}
+        // Field level security. A column the user may not read is masked; one they
+        // may not edit is read only, as is a disabled or inactive form.
+        let disabled = context.mode.isControlDisabled;
+        let masked = false;
+        const security = parameters.hourvalue?.security;
+        if (security) {
+            disabled = disabled || !security.editable;
+            masked = !security.readable;
+        }
 
-	/**
-	 * Called when any value in the property bag has changed. This includes field values, data-sets, global values such as container height and width, offline status, control metadata values such as label, visible, etc.
-	 * @param context The entire property bag available to control via Context Object; It contains values as set up by the customizer mapped to names defined in the manifest, as well as utility functions
-	 */
-	public updateView(context: ComponentFramework.Context<IInputs>): void
-	{
+        this.storageMode = readEnum<StorageMode>(
+            parameters.storagemode?.raw,
+            ["hoursandminutes", "minutesfrommidnight"],
+            "hoursandminutes"
+        );
 
-		// If the bound attribute is disabled because it is inactive or the user doesn't have access
-		let isReadOnly = context.mode.isControlDisabled;
+        // A half-populated record reads as a real time rather than being thrown
+        // away. Nothing is written back here, so simply opening a form never
+        // modifies the record.
+        this.value = columnsToValue(this.storageMode, parameters.hourvalue?.raw, parameters.minutevalue?.raw);
+        this.outputs = valueToColumns(this.value, this.storageMode);
 
-		let isMasked = false;
-		// When a field has FLS enabled, the security property on the attribute parameter is set
-		if (context.parameters.hourvalue.security) {
-			isReadOnly = isReadOnly || !context.parameters.hourvalue.security.editable;		
-			isMasked = !context.parameters.hourvalue.security.readable
-		}
+        const format = this.readFormat(context);
+        const nowMinutes = this.readNow(context);
+        const options = this.readOptions(context);
 
-		//Prepare props for component rendering
-		this._hourvalue = context.parameters.hourvalue.raw !== null ? context.parameters.hourvalue.raw : undefined;
-		this._minutevalue = context.parameters.minutevalue.raw !== null ? context.parameters.minutevalue.raw : undefined;
-		let display = context.parameters.displaytype.raw;
-		
-		
-		//update the props
-		this._props.hourvalue = this._hourvalue;
-		this._props.minutevalue = this._minutevalue;
-		this._props.readonly = isReadOnly;
-		this._props.masked = isMasked;
-		this._props.use12Hours = display === "12 hrs";
-		this._props.format = display === "12 hrs" ? "h:mm a" : "k:mm";
-		this._props.hourstep = context.parameters.hourstep?.raw ?? 1;
-		this._props.minutestep = context.parameters.minutestep?.raw ?? 1;
-		this._props.editenabled = context.parameters.editenabled?.raw === "true" ?? false;
+        const placeholder =
+            parameters.placeholdertext?.raw ||
+            (readEnum(parameters.defaulttime?.raw, ["empty", "now"], "empty") === "now"
+                ? formatTime(nowMinutes, format)
+                : undefined);
 
+        const element = React.createElement(
+            FluentProvider,
+            { theme: this.readTheme(context), style: { width: "100%" } },
+            React.createElement(TimePickerControl, {
+                value: this.value,
+                options,
+                format,
+                nowMinutes,
+                disabled,
+                masked,
+                allowFreeform: readBoolEnum(parameters.editenabled?.raw, false),
+                clearable: readBoolEnum(parameters.showclear?.raw, true),
+                appearance: readEnum(parameters.fieldappearance?.raw, APPEARANCES, "outline"),
+                placeholder: placeholder ?? undefined,
+                onChange: this.handleChange
+            })
+        );
 
-		this._root.render(createElement(TimePickerTextBox, this._props)) 
-		
-	}
+        this.root?.render(element);
+    }
 
-	/** 
-	 * It is called by the framework prior to a control receiving new data. 
-	 * @returns an object based on nomenclature defined in manifest, expecting object[s] for property marked as “bound” or “output”
-	 */
-	public getOutputs(): IOutputs
+    public getOutputs(): IOutputs {
+        return {
+            hourvalue: this.outputs.hourvalue,
+            minutevalue: this.outputs.minutevalue
+        };
+    }
 
-	{
-		return {
-			hourvalue : this._hourvalue,
-			minutevalue : this._minutevalue
-		};
-	}
+    public destroy(): void {
+        this.root?.unmount();
+        this.root = undefined;
+    }
 
-	/** 
-	 * Called when the control is to be removed from the DOM tree. Controls should use this call for cleanup.
-	 * i.e. cancelling any pending remote calls, removing listeners, etc.
-	 */
-	public destroy(): void
-	{
-		// Add code to cleanup control if necessary
-		this._root.unmount();
-	}
+    /**
+     * Both columns are written on every change, so picking an hour can never
+     * leave the minute column empty.
+     */
+    private handleChange = (value: number | null): void => {
+        this.value = value;
+        this.outputs = valueToColumns(value, this.storageMode);
+        this.notifyOutputChanged();
+    };
 
-	//Function called when props is signaling an update
-	private notifyChange(hourvalue:number|undefined, minutevalue:number|undefined) {
-		
-		this._hourvalue = hourvalue;
-		this._minutevalue = minutevalue;
-		this._notifyOutputChanged();  //=> will trigger getOutputs
-	}
+    /** Fluent v9 theme from the host, falling back to the light web theme in Power Pages. */
+    private readTheme(context: ComponentFramework.Context<IInputs>): Theme {
+        return context.fluentDesignLanguage?.tokenTheme ?? webLightTheme;
+    }
 
-	
+    private readFormat(context: ComponentFramework.Context<IInputs>): FormatOptions {
+        const formatting = context.userSettings?.dateFormattingInfo;
+        const displayType = context.parameters.displaytype?.raw;
+
+        let use12Hours: boolean;
+        if (displayType === "auto") {
+            use12Hours = use12HourFromPattern(formatting?.shortTimePattern) ?? false;
+        } else {
+            use12Hours = displayType === "12 hrs";
+        }
+
+        return {
+            use12Hours,
+            separator: formatting?.timeSeparator || ":",
+            amDesignator: formatting?.amDesignator || undefined,
+            pmDesignator: formatting?.pmDesignator || undefined
+        };
+    }
+
+    /**
+     * Current wall-clock time. The Dataverse user's own time zone wins over the
+     * browser clock when the host exposes it, so a traveller still sees the time
+     * their records are recorded against.
+     */
+    private readNow(context: ComponentFramework.Context<IInputs>): number {
+        let offset: number | undefined;
+        try {
+            offset = context.userSettings?.getTimeZoneOffsetMinutes?.(new Date());
+        } catch {
+            offset = undefined;
+        }
+        return nowMinutesOfDay(offset);
+    }
+
+    /** Rebuilding 1440 options on every render is wasteful, so cache on the inputs. */
+    private readOptions(context: ComponentFramework.Context<IInputs>): readonly number[] {
+        const parameters = context.parameters;
+        const range = {
+            hourStep: parameters.hourstep?.raw,
+            minuteStep: parameters.minutestep?.raw,
+            minHour: parameters.minhour?.raw,
+            maxHour: parameters.maxhour?.raw
+        };
+        const key = JSON.stringify(range);
+        if (key !== this.cachedOptionsKey) {
+            this.cachedOptions = buildOptions(range);
+            this.cachedOptionsKey = key;
+        }
+        return this.cachedOptions;
+    }
 }

@@ -1,100 +1,134 @@
 # TimePicker.PCF ![GitHub all releases](https://img.shields.io/github/downloads/drivardxrm/TimePicker.PCF/total?style=plastic)
-Time Picker PCF (PowerApps Component framework) Control based on React time Picker (rc-time-picker)
 
-It will display a formatted input field with a pop-up for time entry.
+Time picker code component for Power Apps, built with the Power Apps component framework.
 
-It requires 2 backend fields on CDS side.
+It renders a themed input with a searchable list of times, and stores the result in
+whole number columns so the value is plain wall-clock time with no time zone
+conversion applied anywhere.
 
-hourvalue : Whole number
-
-minutevalue : Whole number
-
-
-# Dependencies
-rc-time-picker : https://github.com/react-component/time-picker
-
-moment         : https://momentjs.com/docs/
-
-# Parameters
-| Parameter         | Description                                                                                  | 
-|-------------------|----------------------------------------------------------------------------------------------|
-| hourvalue         | Bind this property to the field where you want to store the hours value                       |         
-| minutevalue       | Bind this property to the field where you want to store the minutes value                       |         
-| displaytype       | 12 Hours or 24 hours format                                                                  |   
-| hourstep          | optional - interval for hour selection (default 1)                                                                  |   
-| minutestep        | optional - interval for minute selection (default 1)                                                                  |   
-| editenabled       | optional - enable manual edit (default false)                                                                  |   
-
-
-
-# Screenshots
 ![alt text](https://github.com/drivardxrm/TimePicker.PCF/blob/master/timepicker.png?raw=true)
 
-![alt text](https://github.com/drivardxrm/TimePicker.PCF/blob/master/timepicker_pcf.gif?raw=true)
+## Supported hosts
 
+| Host | Supported | Notes |
+|---|---|---|
+| Model-driven apps (Dynamics 365) | Yes | Picks up the app's Fluent theme, including dark mode |
+| Canvas apps | Yes | |
+| Power Pages | Yes | Both storage modes work. Stays a standard component, since Power Pages does not support React platform libraries |
 
-# Installation
-You can install the component directly from solution files containes in the 'Release' section
-https://github.com/drivardxrm/TimePicker.PCF/releases
+## Storage modes
 
-# Get required tools
+The component reads and writes whole number columns. Which columns it uses is set by
+the **Storage Mode** property.
 
-To use Microsoft PowerApps CLI, do the following:
+**Hours and minutes**, the default, uses two columns. `hourvalue` holds 0-23 and
+`minutevalue` holds 0-59. Both columns are always written together, so choosing an
+hour can never leave the minute column empty. A record that already holds only one of
+the two is read as a real time, with the missing half treated as zero, and is left
+untouched until the user actually changes the value.
 
-* Install Npm (comes with Node.js) or install Node.js (comes with npm). We recommend LTS (Long Term Support) version 10.15.3 LTS as it seems to be most stable.
+**Minutes from midnight** uses one column. `hourvalue` holds 0-1439 and `minutevalue`
+is left unbound. Use it when you would rather keep one column than two, or if you hit
+the multi-column binding limitation that the Power Pages documentation describes. The
+two column mode is known to work on Power Pages in practice, so this is an option
+rather than a requirement.
 
-* Install .NET Framework 4.6.2 Developer Pack.
+## Parameters
 
-* If you don’t already have Visual Studio 2017 or later, follow one of the options below:
+| Parameter | Description | Default |
+|---|---|---|
+| `hourvalue` | Whole number column holding the hour, or the whole time in single column mode | required |
+| `minutevalue` | Whole number column holding the minute. Leave unbound in single column mode | optional |
+| `storagemode` | `Hours and minutes` (two columns) or `Minutes from midnight` (one column) | Hours and minutes |
+| `displaytype` | `12 hrs`, `24 hrs`, or `Auto` to follow the user's regional settings | 24 hrs |
+| `fieldappearance` | `outline`, `underline`, `filled-darker` or `filled-lighter` | outline |
+| `placeholdertext` | Text shown when no time is set | none |
+| `hourstep` | Interval between selectable hours | 1 |
+| `minutestep` | Interval between selectable minutes. Use 60 for whole hours only | 1 |
+| `minhour` | First selectable hour, 0-23 | 0 |
+| `maxhour` | Last selectable hour, 1-23. Leave blank for 23 | 23 |
+| `editenabled` | Allow the user to type a time as well as pick one | false |
+| `showclear` | Show a button that clears the value | true |
+| `defaulttime` | `Nothing`, or `Current time` to show the user's local time as the placeholder | Nothing |
 
-  * Option 1: Install Visual Studio 2017 or later.
-  * Option 2: Install .NET Core 2.2 SDK and then install Visual Studio Code.
-* Install Microsoft PowerApps CLI.
+The list of times always opens at the current time when the field is empty, so local
+time is the first thing the user sees. The current time comes from the Dataverse
+user's own time zone when the host exposes it, and from the browser clock otherwise.
 
-Be sure to update your Microsoft PowerApps CLI to the latest version: 
-```bash
-pac install latest
-```
-# Build the control
+With `editenabled` on, the field accepts `18:30`, `18.30`, `1830`, `830`, `18`,
+`6:30 pm` and `6pm`. Text that cannot be understood is discarded and the field falls
+back to the stored value, so the record never ends up holding junk.
 
-* Clone the repo/ download the zip file.
-* Navigate to ./TimePicker/ folder.
-* Copy the folder path and open it in visual studio code.
-* Open the terminal, and run the command the following command to install the project dependencies:
+## Upgrading from 1.x
+
+The upgrade is in place. The namespace, the component name, every existing parameter
+name and both column types are unchanged, so forms that already use the component keep
+working without being touched. Every parameter added in 2.0 is optional and defaults to
+the 1.x behaviour.
+
+Three things changed that are worth knowing about:
+
+- `minutevalue` is now optional rather than required. Existing forms already bind it, so
+  nothing breaks. Making it optional is what allows the single column mode.
+- A record holding an hour but no minute used to be wiped on load. It is now read as a
+  time, and the record is left alone until the user changes something.
+- The look is supplied by Fluent UI and follows the host theme, so the component no
+  longer ships its own hardcoded colours. The 1.x field had a transparent border, which
+  is why it appeared to have no border or background on a form.
+
+## Dependencies
+
+[Fluent UI React v9](https://react.fluentui.dev/). The 1.x dependencies on
+`rc-time-picker` and `moment` were removed; `rc-time-picker` was last released in
+December 2019 and is archived upstream.
+
+## Installation
+
+Install directly from the solution files in the
+[Releases](https://github.com/drivardxrm/TimePicker.PCF/releases) section.
+
+## Build
+
+Install the [Power Platform CLI](https://learn.microsoft.com/power-platform/developer/cli/introduction)
+and Node.js, then:
+
 ```bash
 npm install
 ```
-Then run the command:
+
+Run the test harness:
+
 ```bash
-npm run start
+npm start
 ```
-# Build the solution
 
-* Create a new solution folder and open the Developer command prompt.
-* Change the directory to the newly created folder in previous step.
-* Init the future solution:
-```bash
-pac solution init --publisherName someName --customizationPrefix someSolutionPrefix
-``` 
-* Add the control to your future solution:
-```bash
-pac solution add-reference --path provide path of control project folder where the pcf.proj is available
-``` 
-* Build 1/2:
-```bash
-msbuild /t:restore
-``` 
-* Build 2/2:
-```bash
-msbuild
-``` 
-* You will have the solution file in SolutionFolder/bin/debug folder!
+Run the unit tests, which cover the time parsing, formatting and column mapping:
 
-If you want to change the solution type you have to edit the .cdsproj file:
 ```bash
-Solution Packager overrides, un-comment to use: SolutionPackagerType (Managed, Unmanaged, Both)
-  <PropertyGroup>
-    <SolutionPackageType>Managed</SolutionPackageType>
-  </PropertyGroup>
+npm test
+```
 
-  ```
+Produce a release bundle:
+
+```bash
+npm run build -- --buildMode production
+```
+
+Build the importable Dataverse solution from the `Solution` folder. This works on
+macOS and Linux as well as Windows, and needs only the .NET SDK:
+
+```bash
+dotnet build -c Release
+```
+
+`Solution.zip` (unmanaged) and `Solution_managed.zip` are written to
+`Solution/bin/Release`. Change `SolutionPackageType` in `Solution/Solution.cdsproj` to
+switch between `Managed`, `Unmanaged` and `Both`.
+
+To push the component straight into an environment while developing, without packaging
+a solution:
+
+```bash
+pac auth create --environment <environment url>
+pac pcf push --publisher-prefix driv
+```

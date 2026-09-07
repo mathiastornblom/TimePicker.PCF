@@ -12,3 +12,8 @@
 # msbuild output directories
 /bin
 /obj
+# pcf-scripts writes a literal '~' folder on macOS instead of expanding $HOME
+/~
+
+# local dev harness config
+/.claude

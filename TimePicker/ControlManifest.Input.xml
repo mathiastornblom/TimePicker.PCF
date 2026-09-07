@@ -7,6 +7,7 @@
          hourvalue is used, for makers who would rather bind one column than two. -->
     <property name="hourvalue" display-name-key="Hour Value Field" description-key="Bind to the whole number column holding the hour. In 'Minutes from midnight' storage mode this column holds the whole time instead." of-type="Whole.None" usage="bound" required="true" />
     <property name="minutevalue" display-name-key="Minute Value Field" description-key="Bind to the whole number column holding the minute. Leave unbound when using 'Minutes from midnight' storage mode." of-type="Whole.None" usage="bound" required="false" />
+    <property name="secondvalue" display-name-key="Second Value Field" description-key="(Optional) Bind to a whole number column holding the second, 0-59. Only used when the seconds wheel is switched on." of-type="Whole.None" usage="bound" required="false" />
 
     <property name="storagemode" display-name-key="Storage Mode" description-key="How the time is stored. 'Hours and minutes' uses both columns. 'Minutes from midnight' uses only the hour column, so you bind one column instead of two." of-type="Enum" usage="input" required="false">
       <value name="hoursandminutes" display-name-key="Hours and minutes (2 columns)" description-key="Hours and minutes" default="true">hoursandminutes</value>
@@ -27,6 +28,9 @@
       <value name="filled-lighter" display-name-key="Filled lighter" description-key="Filled lighter">filled-lighter</value>
     </property>
 
+    <property name="bandcolor" display-name-key="Selection Band Colour" description-key="(Optional) CSS colour of the band behind the selected row, e.g. #0078d4 or rgba(0,120,212,0.15). Blank follows the app theme. Use 'transparent' to hide it." of-type="SingleLine.Text" usage="input" required="false" />
+    <property name="bandopacity" display-name-key="Selection Band Opacity" description-key="(Optional) Opacity of the selection band as a percentage, 1-100. Blank means fully opaque." of-type="Whole.None" usage="input" required="false" />
+
     <property name="placeholdertext" display-name-key="Placeholder" description-key="(Optional) Text shown when no time is set" of-type="SingleLine.Text" usage="input" required="false" />
 
     <property name="showunits" display-name-key="Show Unit Labels" description-key="Show a unit beside the selected row of each wheel, as '18 hours' (default = true)" of-type="Enum" usage="input" required="false">
@@ -35,12 +39,25 @@
     </property>
     <property name="hourunittext" display-name-key="Hour Unit Label" description-key="(Optional) Text beside the hour wheel. Default 'hours', and blank in 12 hour display where AM/PM already labels it." of-type="SingleLine.Text" usage="input" required="false" />
     <property name="minuteunittext" display-name-key="Minute Unit Label" description-key="(Optional) Text beside the minute wheel. Default 'min'." of-type="SingleLine.Text" usage="input" required="false" />
+    <property name="secondunittext" display-name-key="Second Unit Label" description-key="(Optional) Text beside the seconds wheel. Default 'sec'." of-type="SingleLine.Text" usage="input" required="false" />
 
     <!-- Selectable range and granularity -->
     <property name="hourstep" display-name-key="Hour Step" description-key="(Optional) Interval between selectable hours. Default 1." of-type="Whole.None" usage="input" required="false" />
     <property name="minutestep" display-name-key="Minute Step" description-key="(Optional) Interval between selectable minutes. Default 1. Use 60 for whole hours only." of-type="Whole.None" usage="input" required="false" />
+    <property name="secondstep" display-name-key="Second Step" description-key="(Optional) Interval between selectable seconds. Default 1." of-type="Whole.None" usage="input" required="false" />
     <property name="minhour" display-name-key="Earliest Hour" description-key="(Optional) First selectable hour, 0-23. Default 0." of-type="Whole.None" usage="input" required="false" />
     <property name="maxhour" display-name-key="Latest Hour" description-key="(Optional) Last selectable hour, 0-23. Default 23." of-type="Whole.None" usage="input" required="false" />
+
+    <property name="showseconds" display-name-key="Show Seconds" description-key="Add a seconds wheel and store the value in the Second Value Field (default = false)" of-type="Enum" usage="input" required="false">
+      <value name="true" display-name-key="true" description-key="True">true</value>
+      <value name="false" display-name-key="false" description-key="False" default="true">false</value>
+    </property>
+
+    <property name="meridiemposition" display-name-key="AM/PM Position" description-key="In 12 hour display, whether AM/PM is its own wheel and where it sits" of-type="Enum" usage="input" required="false">
+      <value name="after" display-name-key="Own wheel, after the time" description-key="After" default="true">after</value>
+      <value name="before" display-name-key="Own wheel, before the time" description-key="Before">before</value>
+      <value name="inline" display-name-key="Inside the hour wheel" description-key="Inline">inline</value>
+    </property>
 
     <!-- Behaviour -->
     <property name="editenabled" display-name-key="Edit Enabled" description-key="Allow the user to type a time as well as pick one (default = false)" of-type="Enum" usage="input" required="true">

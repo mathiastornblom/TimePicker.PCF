@@ -6,7 +6,7 @@ It renders a themed input with a searchable list of times, and stores the result
 whole number columns so the value is plain wall-clock time with no time zone
 conversion applied anywhere.
 
-![The picker open, showing hour and minute wheels side by side](timepicker-v2.png)
+![The picker open, showing hour, minute, second and AM/PM wheels](timepicker-v2.png)
 
 ## Supported hosts
 
@@ -21,14 +21,16 @@ conversion applied anywhere.
 The component reads and writes whole number columns. Which columns it uses is set by
 the **Storage Mode** property.
 
-**Hours and minutes**, the default, uses two columns. `hourvalue` holds 0-23 and
-`minutevalue` holds 0-59. Both columns are always written together, so choosing an
+**Hours and minutes**, the default, uses two columns, or three with seconds switched
+on. `hourvalue` holds 0-23, `minutevalue` holds 0-59, and `secondvalue` holds 0-59.
+The second column is only written when the seconds wheel is on, so records that do not
+track seconds are left alone. Both columns are always written together, so choosing an
 hour can never leave the minute column empty. A record that already holds only one of
 the two is read as a real time, with the missing half treated as zero, and is left
 untouched until the user actually changes the value.
 
-**Minutes from midnight** uses one column. `hourvalue` holds 0-1439 and `minutevalue`
-is left unbound. Use it when you would rather keep one column than two, or if you hit
+**Minutes from midnight** uses one column and does not carry seconds. `hourvalue` holds
+0-1439 and the other columns are left unbound. Use it when you would rather keep one column than two, or if you hit
 the multi-column binding limitation that the Power Pages documentation describes. The
 two column mode is known to work on Power Pages in practice, so this is an option
 rather than a requirement.
@@ -39,6 +41,7 @@ rather than a requirement.
 |---|---|---|
 | `hourvalue` | Whole number column holding the hour, or the whole time in single column mode | required |
 | `minutevalue` | Whole number column holding the minute. Leave unbound in single column mode | optional |
+| `secondvalue` | Whole number column holding the second, 0-59. Only used when the seconds wheel is on | optional |
 | `storagemode` | `Hours and minutes` (two columns) or `Minutes from midnight` (one column) | Hours and minutes |
 | `displaytype` | `12 hrs`, `24 hrs`, or `Auto` to follow the user's regional settings | 24 hrs |
 | `fieldappearance` | `outline`, `underline`, `filled-darker` or `filled-lighter` | outline |
@@ -46,18 +49,29 @@ rather than a requirement.
 | `showunits` | Show a unit beside the centred row of each wheel | true |
 | `hourunittext` | Text beside the hour wheel | `hours`, blank in 12 hour display |
 | `minuteunittext` | Text beside the minute wheel | `min` |
+| `secondunittext` | Text beside the seconds wheel | `sec` |
+| `showseconds` | Add a seconds wheel and store the value in `secondvalue` | false |
+| `meridiemposition` | In 12 hour display: AM/PM on its own wheel `after` or `before` the time, or `inline` in the hour wheel | after |
+| `bandcolor` | CSS colour of the selection band. Blank follows the app theme | theme |
+| `bandopacity` | Opacity of the selection band, 1-100 | 100 |
 | `hourstep` | Interval between selectable hours | 1 |
 | `minutestep` | Interval between selectable minutes. Use 60 for whole hours only | 1 |
+| `secondstep` | Interval between selectable seconds | 1 |
 | `minhour` | First selectable hour, 0-23 | 0 |
 | `maxhour` | Last selectable hour, 1-23. Leave blank for 23 | 23 |
 | `editenabled` | Allow the user to type a time as well as pick one | false |
 | `showclear` | Show a button that clears the value | true |
 | `defaulttime` | `Nothing`, or `Current time` to show the user's local time as the placeholder | Nothing |
 
-The picker is two wheels side by side, hours and minutes, in the style of an iOS
-picker. Rows snap to a band in the middle and fade out towards the top and bottom.
-Choosing on either wheel writes the whole time, so an hour can never be stored without
-its minute.
+The picker is a row of wheels in the style of an iOS picker: hours and minutes, plus
+seconds when `showseconds` is on, plus AM/PM as its own wheel in 12 hour display. Rows
+snap to a band spanning all the columns, and shrink and fade as they recede from it.
+Choosing on any wheel writes the whole time, so an hour can never be stored without its
+minute.
+
+The band takes any CSS colour and an opacity, so it can be tuned to the app. Setting the
+colour to `transparent` removes it. In 12 hour display the AM/PM wheel can sit after the
+time, before it, or be folded into the hour wheel as `6 PM` rows.
 
 Both wheels open on the current time when the field is empty, so local time is the
 first thing the user sees. The current time comes from the Dataverse user's own time
@@ -74,7 +88,7 @@ display the hour label defaults to blank, because the AM/PM designator already s
 what the column is.
 
 With `editenabled` on, the field accepts `18:30`, `18.30`, `1830`, `830`, `18`,
-`6:30 pm` and `6pm`. Text that cannot be understood is discarded and the field falls
+`6:30 pm`, `6pm` and `18:30:45`. Text that cannot be understood is discarded and the field falls
 back to the stored value, so the record never ends up holding junk.
 
 ## Upgrading from 1.x

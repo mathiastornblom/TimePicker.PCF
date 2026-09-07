@@ -59,7 +59,6 @@ const useStyles = makeStyles({
         justifyContent: "center",
         height: `${ITEM_HEIGHT}px`,
         scrollSnapAlign: "center",
-        scrollSnapStop: "always",
         cursor: "pointer",
         userSelect: "none",
         willChange: "transform, opacity",
@@ -175,13 +174,26 @@ export const WheelColumn: React.FC<WheelColumnProps> = (props) => {
             }
             programmatic.current = true;
             scroller.scrollTo({ top, behavior: smooth && !reduced ? "smooth" : "auto" });
-            window.setTimeout(
-                () => {
+
+            // The popover is still being positioned when a wheel first mounts, and
+            // that reflow can drag the scroll position off the row we asked for.
+            // Check back and correct rather than trusting the first attempt.
+            const settle = smooth && !reduced ? 320 : 40;
+            const verify = (remaining: number) => {
+                const current = scrollerRef.current;
+                if (!current) {
                     programmatic.current = false;
-                    paint();
-                },
-                smooth && !reduced ? 320 : 40
-            );
+                    return;
+                }
+                if (Math.abs(current.scrollTop - top) > 1 && remaining > 0) {
+                    current.scrollTop = top;
+                    window.setTimeout(() => verify(remaining - 1), 60);
+                    return;
+                }
+                programmatic.current = false;
+                paint();
+            };
+            window.setTimeout(() => verify(3), settle);
         },
         [paint]
     );

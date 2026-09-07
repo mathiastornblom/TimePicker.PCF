@@ -4,20 +4,23 @@ import { createRoot, Root } from "react-dom/client";
 import { FluentProvider, webLightTheme } from "@fluentui/react-components";
 import type { Theme } from "@fluentui/react-components";
 import TimePickerControl from "./components/TimePickerControl";
-import type { FieldAppearance } from "./components/TimePickerControl";
+import type { FieldAppearance, MeridiemPosition } from "./components/TimePickerControl";
 import {
     buildHours,
     buildMinutes,
+    buildSeconds,
     columnsToValue,
     formatTime,
-    nowMinutesOfDay,
-    toParts,
     is12HourPattern,
+    nowSecondsOfDay,
+    toParts,
     valueToColumns
 } from "./lib/time";
 import type { ColumnValues, FormatOptions, StorageMode } from "./lib/time";
+import { parseCssColor, parseOpacityPercent } from "./lib/appearance";
 
 const APPEARANCES: readonly FieldAppearance[] = ["outline", "underline", "filled-darker", "filled-lighter"];
+const MERIDIEM_POSITIONS: readonly MeridiemPosition[] = ["after", "before", "inline"];
 
 /** Enum inputs arrive as null when the maker never configured them. */
 function readEnum<T extends string>(raw: string | null | undefined, allowed: readonly T[], fallback: T): T {
@@ -40,10 +43,12 @@ export class TimePicker implements ComponentFramework.StandardControl<IInputs, I
 
     private value: number | null = null;
     private storageMode: StorageMode = "hoursandminutes";
-    private outputs: ColumnValues = { hourvalue: undefined, minutevalue: undefined };
+    private outputs: ColumnValues = { hourvalue: undefined, minutevalue: undefined, secondvalue: undefined };
+    private showSeconds = false;
 
     private cachedHours: readonly number[] = [];
     private cachedMinutes: readonly number[] = [];
+    private cachedSeconds: readonly number[] = [];
     private cachedRangeKey = "";
 
     public init(
@@ -79,26 +84,35 @@ export class TimePicker implements ComponentFramework.StandardControl<IInputs, I
         // A half-populated record reads as a real time rather than being thrown
         // away. Nothing is written back here, so simply opening a form never
         // modifies the record.
-        this.value = columnsToValue(this.storageMode, parameters.hourvalue?.raw, parameters.minutevalue?.raw);
-        this.outputs = valueToColumns(this.value, this.storageMode);
+        this.showSeconds = readBoolEnum(parameters.showseconds?.raw, false);
+        this.value = columnsToValue(
+            this.storageMode,
+            parameters.hourvalue?.raw,
+            parameters.minutevalue?.raw,
+            this.showSeconds ? parameters.secondvalue?.raw : null
+        );
+        this.outputs = valueToColumns(this.value, this.storageMode, this.showSeconds);
 
         const format = this.readFormat(context);
-        const nowMinutes = this.readNow(context);
-        const { hours, minutes } = this.readRanges(context, this.value);
+        const nowSeconds = this.readNow(context);
+        const { hours, minutes, seconds } = this.readRanges(context, this.value);
 
         // Unit labels beside the centred row. In 12 hour display the hour wheel
         // already reads "6 PM", so its unit defaults to nothing rather than to
         // "6 PM hours"; an explicit label still wins.
         const showUnits = readBoolEnum(parameters.showunits?.raw, true);
-        const hourUnit = showUnits
-            ? (parameters.hourunittext?.raw || (format.use12Hours ? "" : "hours"))
-            : "";
+        const meridiemPosition = readEnum(parameters.meridiemposition?.raw, MERIDIEM_POSITIONS, "after");
+        // With AM/PM on its own wheel the hour column is just a number again, so it
+        // gets its unit back even in 12 hour display.
+        const hourUnitDefault = format.use12Hours && meridiemPosition === "inline" ? "" : "hours";
+        const hourUnit = showUnits ? (parameters.hourunittext?.raw || hourUnitDefault) : "";
         const minuteUnit = showUnits ? (parameters.minuteunittext?.raw || "min") : "";
+        const secondUnit = showUnits ? (parameters.secondunittext?.raw || "sec") : "";
 
         const placeholder =
             parameters.placeholdertext?.raw ||
             (readEnum(parameters.defaulttime?.raw, ["empty", "now"], "empty") === "now"
-                ? formatTime(nowMinutes, format)
+                ? formatTime(nowSeconds, format)
                 : undefined);
 
         const element = React.createElement(
@@ -108,15 +122,21 @@ export class TimePicker implements ComponentFramework.StandardControl<IInputs, I
                 value: this.value,
                 hours,
                 minutes,
+                seconds,
+                showSeconds: this.showSeconds,
+                meridiemPosition,
                 format,
                 hourUnit,
                 minuteUnit,
-                nowMinutes,
+                secondUnit,
+                nowSeconds,
                 disabled,
                 masked,
                 allowFreeform: readBoolEnum(parameters.editenabled?.raw, false),
                 clearable: readBoolEnum(parameters.showclear?.raw, true),
                 appearance: readEnum(parameters.fieldappearance?.raw, APPEARANCES, "outline"),
+                bandColor: parseCssColor(parameters.bandcolor?.raw),
+                bandOpacity: parseOpacityPercent(parameters.bandopacity?.raw),
                 placeholder: placeholder ?? undefined,
                 onChange: this.handleChange
             })
@@ -128,7 +148,8 @@ export class TimePicker implements ComponentFramework.StandardControl<IInputs, I
     public getOutputs(): IOutputs {
         return {
             hourvalue: this.outputs.hourvalue,
-            minutevalue: this.outputs.minutevalue
+            minutevalue: this.outputs.minutevalue,
+            secondvalue: this.outputs.secondvalue
         };
     }
 
@@ -143,7 +164,7 @@ export class TimePicker implements ComponentFramework.StandardControl<IInputs, I
      */
     private handleChange = (value: number | null): void => {
         this.value = value;
-        this.outputs = valueToColumns(value, this.storageMode);
+        this.outputs = valueToColumns(value, this.storageMode, this.showSeconds);
         this.notifyOutputChanged();
     };
 
@@ -167,7 +188,8 @@ export class TimePicker implements ComponentFramework.StandardControl<IInputs, I
             use12Hours,
             separator: formatting?.timeSeparator || ":",
             amDesignator: formatting?.amDesignator || undefined,
-            pmDesignator: formatting?.pmDesignator || undefined
+            pmDesignator: formatting?.pmDesignator || undefined,
+            showSeconds: readBoolEnum(context.parameters.showseconds?.raw, false)
         };
     }
 
@@ -183,7 +205,7 @@ export class TimePicker implements ComponentFramework.StandardControl<IInputs, I
         } catch {
             offset = undefined;
         }
-        return nowMinutesOfDay(offset);
+        return nowSecondsOfDay(offset);
     }
 
     /**
@@ -195,16 +217,18 @@ export class TimePicker implements ComponentFramework.StandardControl<IInputs, I
     private readRanges(
         context: ComponentFramework.Context<IInputs>,
         value: number | null
-    ): { hours: readonly number[]; minutes: readonly number[] } {
+    ): { hours: readonly number[]; minutes: readonly number[]; seconds: readonly number[] } {
         const parameters = context.parameters;
         const parts = value === null ? null : toParts(value);
         const shape = {
             hourStep: parameters.hourstep?.raw,
             minuteStep: parameters.minutestep?.raw,
+            secondStep: parameters.secondstep?.raw,
             minHour: parameters.minhour?.raw,
             maxHour: parameters.maxhour?.raw,
             includeHour: parts?.hours ?? null,
-            includeMinute: parts?.minutes ?? null
+            includeMinute: parts?.minutes ?? null,
+            includeSecond: parts?.seconds ?? null
         };
         const key = JSON.stringify(shape);
         if (key !== this.cachedRangeKey) {
@@ -214,12 +238,10 @@ export class TimePicker implements ComponentFramework.StandardControl<IInputs, I
                 maxHour: shape.maxHour,
                 include: shape.includeHour
             });
-            this.cachedMinutes = buildMinutes({
-                minuteStep: shape.minuteStep,
-                include: shape.includeMinute
-            });
+            this.cachedMinutes = buildMinutes({ step: shape.minuteStep, include: shape.includeMinute });
+            this.cachedSeconds = buildSeconds({ step: shape.secondStep, include: shape.includeSecond });
             this.cachedRangeKey = key;
         }
-        return { hours: this.cachedHours, minutes: this.cachedMinutes };
+        return { hours: this.cachedHours, minutes: this.cachedMinutes, seconds: this.cachedSeconds };
     }
 }

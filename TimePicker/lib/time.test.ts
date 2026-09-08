@@ -15,6 +15,7 @@ import {
     formatTime,
     fromHour12,
     fromParts,
+    hostValueChanged,
     is12HourPattern,
     nearestOption,
     nowSecondsOfDay,
@@ -259,4 +260,26 @@ test("the user's short time pattern decides 12 versus 24 hour display", () => {
     assert.equal(is12HourPattern("HH:mm"), false);
     assert.equal(is12HourPattern("H.mm"), false);
     assert.equal(is12HourPattern(undefined), null);
+});
+
+test("the host's value is adopted on the first render", () => {
+    assert.equal(hostValueChanged(null, { hour: 2, minute: 0, second: null }), true);
+});
+
+test("a stale echo from the host does not overwrite the user's choice", () => {
+    // Power Pages calls updateView after notifyOutputChanged with the values it
+    // held before the change. Adopting those saved a blank time.
+    const reported = { hour: null, minute: null, second: null };
+    assert.equal(hostValueChanged(reported, { hour: null, minute: null, second: null }), false);
+
+    const existing = { hour: 9, minute: 30, second: null };
+    assert.equal(hostValueChanged(existing, { hour: 9, minute: 30, second: null }), false);
+});
+
+test("a genuine change from the host is adopted", () => {
+    const previous = { hour: 9, minute: 30, second: null };
+    assert.equal(hostValueChanged(previous, { hour: 2, minute: 0, second: null }), true);
+    assert.equal(hostValueChanged(previous, { hour: 9, minute: 45, second: null }), true);
+    assert.equal(hostValueChanged(previous, { hour: 9, minute: 30, second: 15 }), true);
+    assert.equal(hostValueChanged(previous, { hour: null, minute: null, second: null }), true);
 });

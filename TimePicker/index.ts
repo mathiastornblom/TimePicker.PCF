@@ -11,12 +11,13 @@ import {
     buildSeconds,
     columnsToValue,
     formatTime,
+    hostValueChanged,
     is12HourPattern,
     nowSecondsOfDay,
     toParts,
     valueToColumns
 } from "./lib/time";
-import type { ColumnValues, FormatOptions, StorageMode } from "./lib/time";
+import type { ColumnValues, FormatOptions, RawColumns, StorageMode } from "./lib/time";
 import { parseCssColor, parseOpacityPercent } from "./lib/appearance";
 
 const APPEARANCES: readonly FieldAppearance[] = ["outline", "underline", "filled-darker", "filled-lighter"];
@@ -45,6 +46,9 @@ export class TimePicker implements ComponentFramework.StandardControl<IInputs, I
     private storageMode: StorageMode = "hoursandminutes";
     private outputs: ColumnValues = { hourvalue: undefined, minutevalue: undefined, secondvalue: undefined };
     private showSeconds = false;
+    /** What the host last reported, so a stale echo can be told from a real change. */
+    private lastHostColumns: RawColumns | null = null;
+    private context: ComponentFramework.Context<IInputs> | undefined;
 
     private cachedHours: readonly number[] = [];
     private cachedMinutes: readonly number[] = [];
@@ -63,6 +67,7 @@ export class TimePicker implements ComponentFramework.StandardControl<IInputs, I
     }
 
     public updateView(context: ComponentFramework.Context<IInputs>): void {
+        this.context = context;
         const parameters = context.parameters;
 
         // Field level security. A column the user may not read is masked; one they
@@ -81,16 +86,23 @@ export class TimePicker implements ComponentFramework.StandardControl<IInputs, I
             "hoursandminutes"
         );
 
-        // A half-populated record reads as a real time rather than being thrown
-        // away. Nothing is written back here, so simply opening a form never
-        // modifies the record.
         this.showSeconds = readBoolEnum(parameters.showseconds?.raw, false);
-        this.value = columnsToValue(
-            this.storageMode,
-            parameters.hourvalue?.raw,
-            parameters.minutevalue?.raw,
-            this.showSeconds ? parameters.secondvalue?.raw : null
-        );
+        const incoming: RawColumns = {
+            hour: parameters.hourvalue?.raw ?? null,
+            minute: parameters.minutevalue?.raw ?? null,
+            second: this.showSeconds ? (parameters.secondvalue?.raw ?? null) : null
+        };
+
+        // Only take the host's value when the host's own data actually moved.
+        // Power Pages calls back after notifyOutputChanged with the values it held
+        // before the change, and adopting those discarded the user's choice and
+        // saved a blank time. A half-populated record still reads as a real time
+        // rather than being thrown away, and nothing is written back here, so
+        // opening a form never modifies the record.
+        if (hostValueChanged(this.lastHostColumns, incoming)) {
+            this.value = columnsToValue(this.storageMode, incoming.hour, incoming.minute, incoming.second);
+            this.lastHostColumns = incoming;
+        }
         this.outputs = valueToColumns(this.value, this.storageMode, this.showSeconds);
 
         const format = this.readFormat(context);
@@ -145,6 +157,13 @@ export class TimePicker implements ComponentFramework.StandardControl<IInputs, I
         this.root?.render(element);
     }
 
+    /** Repaint from the current context without waiting for the host to call back. */
+    private rerender(): void {
+        if (this.context) {
+            this.updateView(this.context);
+        }
+    }
+
     public getOutputs(): IOutputs {
         return {
             hourvalue: this.outputs.hourvalue,
@@ -156,6 +175,7 @@ export class TimePicker implements ComponentFramework.StandardControl<IInputs, I
     public destroy(): void {
         this.root?.unmount();
         this.root = undefined;
+        this.context = undefined;
     }
 
     /**
@@ -166,6 +186,10 @@ export class TimePicker implements ComponentFramework.StandardControl<IInputs, I
         this.value = value;
         this.outputs = valueToColumns(value, this.storageMode, this.showSeconds);
         this.notifyOutputChanged();
+        // Paint the choice straight away. Power Pages does not reliably call
+        // updateView in response, so waiting for it left the field frozen on the
+        // old time while the wheel sat on the new one.
+        this.rerender();
     };
 
     /** Fluent v9 theme from the host, falling back to the light web theme in Power Pages. */

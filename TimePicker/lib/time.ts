@@ -396,3 +396,30 @@ export function is12HourPattern(shortTimePattern: string | undefined): boolean |
     }
     return /t/i.test(shortTimePattern.replace(/'[^']*'/g, ""));
 }
+
+/** The raw bound column values as the host last reported them. */
+export interface RawColumns {
+    hour: number | null;
+    minute: number | null;
+    second: number | null;
+}
+
+/**
+ * Whether the host's own data has actually moved since the last render.
+ *
+ * Power Pages calls updateView again after notifyOutputChanged, but with the
+ * values it held *before* the change. Adopting those blindly discards what the
+ * user just chose, and the stale value is then what gets saved. Model-driven apps
+ * echo the new value back instead, so both hosts are served by only adopting the
+ * host's value when it differs from what it last reported.
+ */
+export function hostValueChanged(previous: RawColumns | null, incoming: RawColumns): boolean {
+    if (previous === null) {
+        return true;
+    }
+    return (
+        previous.hour !== incoming.hour ||
+        previous.minute !== incoming.minute ||
+        previous.second !== incoming.second
+    );
+}

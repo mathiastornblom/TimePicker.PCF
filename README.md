@@ -14,7 +14,13 @@ conversion applied anywhere.
 |---|---|---|
 | Model-driven apps (Dynamics 365) | Yes | Picks up the app's Fluent theme, including dark mode |
 | Canvas apps | Yes | |
-| Power Pages | Yes | Both storage modes work. Stays a standard component, since Power Pages does not support React platform libraries |
+| Power Pages | Yes | Both storage modes work. Stays a standard component, since Power Pages does not support React platform libraries. See the note below |
+
+Power Pages does not reliably call the component back after it reports a change, and
+when it does call back it can pass the values it held *before* the change. The component
+therefore keeps the choice the user made and only takes the host's value when the host's
+own data has actually moved. Without this, choosing an hour left the field showing the
+old time and saved a blank one.
 
 ## Storage modes
 

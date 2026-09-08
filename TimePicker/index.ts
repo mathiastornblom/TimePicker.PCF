@@ -50,6 +50,7 @@ export class TimePicker implements ComponentFramework.StandardControl<IInputs, I
     private showSeconds = false;
     /** What the host last reported, so a stale echo can be told from a real change. */
     private lastHostColumns: RawColumns | null = null;
+    private warnedUnboundMinute = false;
 
     private cachedHours: readonly number[] = [];
     private cachedMinutes: readonly number[] = [];
@@ -100,7 +101,20 @@ export class TimePicker implements ComponentFramework.StandardControl<IInputs, I
         // saved a blank time. A half-populated record still reads as a real time
         // rather than being thrown away, and nothing is written back here, so
         // opening a form never modifies the record.
-        trace("updateView", { incoming, held: this.value });
+        // A bound property carries attribute metadata; an unbound one does not.
+        // Since 2.0 the minute column is optional, so a form can be saved with it
+        // unbound, and then minutes have nowhere to go and are silently dropped.
+        const minuteBound = parameters.minutevalue?.attributes !== undefined;
+        if (this.storageMode === "hoursandminutes" && !minuteBound && !this.warnedUnboundMinute) {
+            this.warnedUnboundMinute = true;
+            // eslint-disable-next-line no-console
+            console.warn(
+                "DR.TimePicker: the Minute Value Field is not bound to a column. " +
+                    "Hours will be saved and minutes will be discarded. Bind it on the form, " +
+                    "or switch Storage Mode to Minutes from midnight."
+            );
+        }
+        trace("updateView", { incoming, held: this.value, minuteBound });
         if (hostValueChanged(this.lastHostColumns, incoming)) {
             this.value = columnsToValue(this.storageMode, incoming.hour, incoming.minute, incoming.second);
             this.lastHostColumns = incoming;

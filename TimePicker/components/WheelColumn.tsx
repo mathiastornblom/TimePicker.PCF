@@ -1,5 +1,6 @@
 import * as React from "react";
 import { makeStyles, mergeClasses, tokens, useId } from "@fluentui/react-components";
+import { trace } from "../lib/trace";
 
 /** Height of a single row, in pixels. Also the scroll snap interval. */
 export const ITEM_HEIGHT = 36;
@@ -271,26 +272,52 @@ export const WheelColumn: React.FC<WheelColumnProps> = (props) => {
         }
         settleTimer.current = window.setTimeout(() => {
             const scroller = scrollerRef.current;
-            if (!scroller || !userDriven.current) {
+            if (!scroller) {
+                return;
+            }
+            if (!userDriven.current) {
+                trace("wheel:settle-ignored", { label, reason: "no gesture" });
                 return;
             }
             // A scroller with no layout, because the popover is closing or hidden,
             // reports scrollTop 0 and would commit the first row.
             if (scroller.clientHeight === 0 || scroller.offsetParent === null) {
+                trace("wheel:settle-ignored", { label, reason: "no layout" });
                 return;
             }
             userDriven.current = false;
             const index = Math.min(values.length - 1, Math.max(0, Math.round(scroller.scrollTop / ITEM_HEIGHT)));
             const value = values[index];
+            trace("wheel:settle", { label, index, value, selected });
             if (value !== undefined && value !== selected) {
                 onSelect(value);
             }
         }, 140);
-    }, [onSelect, paint, selected, values]);
+    }, [label, onSelect, paint, selected, values]);
 
-    const markUserDriven = React.useCallback(() => {
-        userDriven.current = true;
-    }, []);
+    /**
+     * Watch for the gestures that mean the user is spinning this wheel.
+     *
+     * These are native listeners in the capture phase rather than React handlers.
+     * The picker renders in a portal outside the control's own container, and the
+     * host page has its own scroll handling, so React's synthetic events are not a
+     * reliable place to detect this. Missing the gesture means the wheel silently
+     * refuses to commit, which is worse than committing too readily.
+     */
+    React.useEffect(() => {
+        const scroller = scrollerRef.current;
+        if (!scroller) {
+            return undefined;
+        }
+        const mark = (event: Event) => {
+            userDriven.current = true;
+            trace("wheel:gesture", { label, type: event.type });
+        };
+        const events = ["pointerdown", "mousedown", "touchstart", "touchmove", "wheel", "keydown"];
+        const options: AddEventListenerOptions = { capture: true, passive: true };
+        events.forEach((name) => scroller.addEventListener(name, mark, options));
+        return () => events.forEach((name) => scroller.removeEventListener(name, mark, options));
+    }, [label]);
 
     const handleKeyDown = React.useCallback(
         (event: React.KeyboardEvent<HTMLDivElement>) => {
@@ -334,9 +361,6 @@ export const WheelColumn: React.FC<WheelColumnProps> = (props) => {
                 tabIndex={0}
                 onScroll={handleScroll}
                 onKeyDown={handleKeyDown}
-                onPointerDown={markUserDriven}
-                onTouchStart={markUserDriven}
-                onWheel={markUserDriven}
             >
                 {values.map((value, index) => (
                     <div

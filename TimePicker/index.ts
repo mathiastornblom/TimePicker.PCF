@@ -19,6 +19,7 @@ import {
 } from "./lib/time";
 import type { ColumnValues, FormatOptions, RawColumns, StorageMode } from "./lib/time";
 import { parseCssColor, parseOpacityPercent } from "./lib/appearance";
+import { trace } from "./lib/trace";
 
 const APPEARANCES: readonly FieldAppearance[] = ["outline", "underline", "filled-darker", "filled-lighter"];
 const MERIDIEM_POSITIONS: readonly MeridiemPosition[] = ["after", "before", "inline"];
@@ -38,23 +39,6 @@ function readBoolEnum(raw: string | null | undefined, fallback: boolean): boolea
     return fallback;
 }
 
-
-/**
- * Opt-in trace, for diagnosing a host that is not persisting values.
- *
- * Records nothing unless `window.__DR_TimePicker_debug = true` is set first, so
- * it costs nothing in normal use. It exists because the local test harness
- * behaves like a model-driven host and cannot reproduce what Power Pages does.
- */
-function trace(event: string, detail?: unknown): void {
-    const scope = typeof window === "undefined" ? undefined : (window as unknown as Record<string, unknown>);
-    if (!scope || scope.__DR_TimePicker_debug !== true) {
-        return;
-    }
-    const log = (scope.__DR_TimePicker_trace as unknown[]) ?? [];
-    log.push({ at: new Date().toISOString(), event, detail });
-    scope.__DR_TimePicker_trace = log.slice(-200);
-}
 
 export class TimePicker implements ComponentFramework.StandardControl<IInputs, IOutputs> {
     private root: Root | undefined;

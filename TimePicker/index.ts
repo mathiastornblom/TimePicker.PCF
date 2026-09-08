@@ -48,7 +48,6 @@ export class TimePicker implements ComponentFramework.StandardControl<IInputs, I
     private showSeconds = false;
     /** What the host last reported, so a stale echo can be told from a real change. */
     private lastHostColumns: RawColumns | null = null;
-    private context: ComponentFramework.Context<IInputs> | undefined;
 
     private cachedHours: readonly number[] = [];
     private cachedMinutes: readonly number[] = [];
@@ -67,7 +66,6 @@ export class TimePicker implements ComponentFramework.StandardControl<IInputs, I
     }
 
     public updateView(context: ComponentFramework.Context<IInputs>): void {
-        this.context = context;
         const parameters = context.parameters;
 
         // Field level security. A column the user may not read is masked; one they
@@ -157,25 +155,27 @@ export class TimePicker implements ComponentFramework.StandardControl<IInputs, I
         this.root?.render(element);
     }
 
-    /** Repaint from the current context without waiting for the host to call back. */
-    private rerender(): void {
-        if (this.context) {
-            this.updateView(this.context);
-        }
-    }
 
+    /**
+     * Report only the columns actually in use. Naming a property the maker never
+     * bound, such as the second column when the seconds wheel is off, puts a key
+     * in the output bag that the host has nowhere to put, and Power Pages is
+     * stricter about that than model-driven apps are.
+     */
     public getOutputs(): IOutputs {
-        return {
-            hourvalue: this.outputs.hourvalue,
-            minutevalue: this.outputs.minutevalue,
-            secondvalue: this.outputs.secondvalue
-        };
+        const outputs: IOutputs = { hourvalue: this.outputs.hourvalue };
+        if (this.storageMode === "hoursandminutes") {
+            outputs.minutevalue = this.outputs.minutevalue;
+            if (this.showSeconds) {
+                outputs.secondvalue = this.outputs.secondvalue;
+            }
+        }
+        return outputs;
     }
 
     public destroy(): void {
         this.root?.unmount();
         this.root = undefined;
-        this.context = undefined;
     }
 
     /**
@@ -185,11 +185,10 @@ export class TimePicker implements ComponentFramework.StandardControl<IInputs, I
     private handleChange = (value: number | null): void => {
         this.value = value;
         this.outputs = valueToColumns(value, this.storageMode, this.showSeconds);
+        // Nothing else happens here. The component paints the choice from its own
+        // state, so there is no need to re-enter updateView from inside the host's
+        // change callback, which risks confusing the host's own change tracking.
         this.notifyOutputChanged();
-        // Paint the choice straight away. Power Pages does not reliably call
-        // updateView in response, so waiting for it left the field frozen on the
-        // old time while the wheel sat on the new one.
-        this.rerender();
     };
 
     /** Fluent v9 theme from the host, falling back to the light web theme in Power Pages. */

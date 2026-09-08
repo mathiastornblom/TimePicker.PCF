@@ -140,6 +140,11 @@ export const WheelColumn: React.FC<WheelColumnProps> = (props) => {
     const styledRange = React.useRef<[number, number] | null>(null);
     // Suppresses the settle handler while we are the ones doing the scrolling.
     const programmatic = React.useRef(false);
+    // Only a scroll the user actually drove may commit a value. Without this, any
+    // stray scroll event commits whatever row is nearest, and a scroller that is
+    // hidden or has not moved reads as row zero. That is what reset the field to
+    // 00 after typing a time and tabbing out.
+    const userDriven = React.useRef(false);
 
     const active = selected ?? fallback;
     const activeIndex = Math.max(0, values.indexOf(active));
@@ -266,9 +271,15 @@ export const WheelColumn: React.FC<WheelColumnProps> = (props) => {
         }
         settleTimer.current = window.setTimeout(() => {
             const scroller = scrollerRef.current;
-            if (!scroller) {
+            if (!scroller || !userDriven.current) {
                 return;
             }
+            // A scroller with no layout, because the popover is closing or hidden,
+            // reports scrollTop 0 and would commit the first row.
+            if (scroller.clientHeight === 0 || scroller.offsetParent === null) {
+                return;
+            }
+            userDriven.current = false;
             const index = Math.min(values.length - 1, Math.max(0, Math.round(scroller.scrollTop / ITEM_HEIGHT)));
             const value = values[index];
             if (value !== undefined && value !== selected) {
@@ -276,6 +287,10 @@ export const WheelColumn: React.FC<WheelColumnProps> = (props) => {
             }
         }, 140);
     }, [onSelect, paint, selected, values]);
+
+    const markUserDriven = React.useCallback(() => {
+        userDriven.current = true;
+    }, []);
 
     const handleKeyDown = React.useCallback(
         (event: React.KeyboardEvent<HTMLDivElement>) => {
@@ -319,6 +334,9 @@ export const WheelColumn: React.FC<WheelColumnProps> = (props) => {
                 tabIndex={0}
                 onScroll={handleScroll}
                 onKeyDown={handleKeyDown}
+                onPointerDown={markUserDriven}
+                onTouchStart={markUserDriven}
+                onWheel={markUserDriven}
             >
                 {values.map((value, index) => (
                     <div

@@ -38,6 +38,24 @@ function readBoolEnum(raw: string | null | undefined, fallback: boolean): boolea
     return fallback;
 }
 
+
+/**
+ * Opt-in trace, for diagnosing a host that is not persisting values.
+ *
+ * Records nothing unless `window.__DR_TimePicker_debug = true` is set first, so
+ * it costs nothing in normal use. It exists because the local test harness
+ * behaves like a model-driven host and cannot reproduce what Power Pages does.
+ */
+function trace(event: string, detail?: unknown): void {
+    const scope = typeof window === "undefined" ? undefined : (window as unknown as Record<string, unknown>);
+    if (!scope || scope.__DR_TimePicker_debug !== true) {
+        return;
+    }
+    const log = (scope.__DR_TimePicker_trace as unknown[]) ?? [];
+    log.push({ at: new Date().toISOString(), event, detail });
+    scope.__DR_TimePicker_trace = log.slice(-200);
+}
+
 export class TimePicker implements ComponentFramework.StandardControl<IInputs, IOutputs> {
     private root: Root | undefined;
     private notifyOutputChanged: () => void = () => undefined;
@@ -62,6 +80,7 @@ export class TimePicker implements ComponentFramework.StandardControl<IInputs, I
     ): void {
         this.notifyOutputChanged = notifyOutputChanged;
         container.style.width = "100%";
+        trace("init");
         this.root = createRoot(container);
     }
 
@@ -97,6 +116,7 @@ export class TimePicker implements ComponentFramework.StandardControl<IInputs, I
         // saved a blank time. A half-populated record still reads as a real time
         // rather than being thrown away, and nothing is written back here, so
         // opening a form never modifies the record.
+        trace("updateView", { incoming, held: this.value });
         if (hostValueChanged(this.lastHostColumns, incoming)) {
             this.value = columnsToValue(this.storageMode, incoming.hour, incoming.minute, incoming.second);
             this.lastHostColumns = incoming;
@@ -163,6 +183,7 @@ export class TimePicker implements ComponentFramework.StandardControl<IInputs, I
      * stricter about that than model-driven apps are.
      */
     public getOutputs(): IOutputs {
+        trace("getOutputs", this.outputs);
         const outputs: IOutputs = { hourvalue: this.outputs.hourvalue };
         if (this.storageMode === "hoursandminutes") {
             outputs.minutevalue = this.outputs.minutevalue;
@@ -188,6 +209,7 @@ export class TimePicker implements ComponentFramework.StandardControl<IInputs, I
         // Nothing else happens here. The component paints the choice from its own
         // state, so there is no need to re-enter updateView from inside the host's
         // change callback, which risks confusing the host's own change tracking.
+        trace("notifyOutputChanged", this.outputs);
         this.notifyOutputChanged();
     };
 

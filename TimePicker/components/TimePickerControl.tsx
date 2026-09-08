@@ -69,11 +69,19 @@ const useStyles = makeStyles({
         minWidth: "0"
     },
     surface: {
-        padding: `${tokens.spacingVerticalS} ${tokens.spacingHorizontalS}`
+        padding: `${tokens.spacingVerticalS} ${tokens.spacingHorizontalS}`,
+        // Power Pages page content was painting over the open picker. Fluent's
+        // portal does not set a stacking order high enough to clear it.
+        zIndex: 1000000
     },
     wheels: {
         position: "relative",
         display: "flex",
+        borderTopStyle: "none",
+        borderRightStyle: "none",
+        borderBottomStyle: "none",
+        borderLeftStyle: "none",
+        boxShadow: "none",
         columnGap: tokens.spacingHorizontalXS,
         height: `${VIEWPORT_HEIGHT}px`,
         // Fade the rows away from the middle, the way a physical wheel curves out
@@ -137,12 +145,33 @@ export const TimePickerControl: React.FC<TimePickerControlProps> = (props) => {
         bandColor,
         bandOpacity,
         placeholder,
-        onChange
+        onChange: onChangeProp
     } = props;
 
     const styles = useStyles();
     const [open, setOpen] = React.useState(false);
     const [draft, setDraft] = React.useState<string | null>(null);
+
+    // The component owns what it shows, exactly as v1 did. Making it purely
+    // controlled by the host looked cleaner but froze the picker in Power Pages,
+    // which does not feed the new value back after a change. The host's value is
+    // adopted whenever it genuinely moves; otherwise the user's choice stands.
+    const [chosen, setChosen] = React.useState<number | null>(value);
+    const lastHostValue = React.useRef<number | null>(value);
+    if (value !== lastHostValue.current) {
+        lastHostValue.current = value;
+        if (value !== chosen) {
+            setChosen(value);
+        }
+    }
+
+    const onChange = React.useCallback(
+        (next: number | null) => {
+            setChosen(next);
+            onChangeProp(next);
+        },
+        [onChangeProp]
+    );
 
     // AM/PM gets its own wheel only in 12 hour display, and only when the maker
     // has not asked for it inline with the hour.
@@ -156,11 +185,11 @@ export const TimePickerControl: React.FC<TimePickerControlProps> = (props) => {
     const fallbackSecond = nearestOption(seconds, now.seconds) ?? 0;
 
     const parts =
-        value === null
+        chosen === null
             ? { hours: fallbackHour, minutes: fallbackMinute, seconds: fallbackSecond }
-            : toParts(value);
+            : toParts(chosen);
 
-    const committedText = value === null ? "" : formatTime(value, format);
+    const committedText = chosen === null ? "" : formatTime(chosen, format);
     const displayText = draft ?? committedText;
 
     // Choosing on any wheel writes the whole time, so an hour can never be stored
@@ -182,18 +211,18 @@ export const TimePickerControl: React.FC<TimePickerControlProps> = (props) => {
         const trimmed = draft.trim();
         setDraft(null);
         if (trimmed === "") {
-            if (value !== null) {
+            if (chosen !== null) {
                 onChange(null);
             }
             return;
         }
         const parsed = parseTime(trimmed, format);
-        if (parsed !== null && parsed !== value) {
+        if (parsed !== null && parsed !== chosen) {
             onChange(parsed);
         }
         // An unparseable draft is discarded and the field falls back to the stored
         // value, so the record never ends up holding junk.
-    }, [draft, format, onChange, value]);
+    }, [chosen, draft, format, onChange]);
 
     if (masked) {
         return (
@@ -213,7 +242,7 @@ export const TimePickerControl: React.FC<TimePickerControlProps> = (props) => {
         <WheelColumn
             key="hour"
             values={hour12Options}
-            selected={value === null ? null : current12.hour12}
+            selected={chosen === null ? null : current12.hour12}
             fallback={fallback12.hour12}
             format={(hour12) => String(hour12)}
             unit={hourUnit}
@@ -224,7 +253,7 @@ export const TimePickerControl: React.FC<TimePickerControlProps> = (props) => {
         <WheelColumn
             key="hour"
             values={hours}
-            selected={value === null ? null : parts.hours}
+            selected={chosen === null ? null : parts.hours}
             fallback={fallbackHour}
             format={(hour) => formatHour(hour, format)}
             unit={hourUnit}
@@ -237,7 +266,7 @@ export const TimePickerControl: React.FC<TimePickerControlProps> = (props) => {
         <WheelColumn
             key="minute"
             values={minutes}
-            selected={value === null ? null : parts.minutes}
+            selected={chosen === null ? null : parts.minutes}
             fallback={fallbackMinute}
             format={formatMinute}
             unit={minuteUnit}
@@ -250,7 +279,7 @@ export const TimePickerControl: React.FC<TimePickerControlProps> = (props) => {
         <WheelColumn
             key="second"
             values={seconds}
-            selected={value === null ? null : parts.seconds}
+            selected={chosen === null ? null : parts.seconds}
             fallback={fallbackSecond}
             format={formatMinute}
             unit={secondUnit}
@@ -263,7 +292,7 @@ export const TimePickerControl: React.FC<TimePickerControlProps> = (props) => {
         <WheelColumn
             key="meridiem"
             values={meridiemOptions}
-            selected={value === null ? null : current12.meridiem}
+            selected={chosen === null ? null : current12.meridiem}
             fallback={fallback12.meridiem}
             format={(meridiem) => formatMeridiem(meridiem, format)}
             unit=""
@@ -282,7 +311,7 @@ export const TimePickerControl: React.FC<TimePickerControlProps> = (props) => {
 
     const contentAfter = (
         <>
-            {clearable && value !== null && !disabled ? (
+            {clearable && chosen !== null && !disabled ? (
                 <Button
                     className={styles.iconButton}
                     appearance="transparent"

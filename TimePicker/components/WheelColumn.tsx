@@ -29,7 +29,16 @@ const useStyles = makeStyles({
         height: `${VIEWPORT_HEIGHT}px`,
         flexGrow: 1,
         flexBasis: "0",
-        minWidth: "0"
+        minWidth: "0",
+        // Portal content lands outside the control's own container, so host CSS
+        // such as the Bootstrap that Power Pages ships can reach it. Reset what
+        // it is likely to add rather than hope it does not.
+        borderTopStyle: "none",
+        borderRightStyle: "none",
+        borderBottomStyle: "none",
+        borderLeftStyle: "none",
+        boxShadow: "none",
+        backgroundColor: "transparent"
     },
     scroller: {
         height: "100%",
@@ -42,9 +51,24 @@ const useStyles = makeStyles({
         paddingTop: `${EDGE_PADDING}px`,
         paddingBottom: `${EDGE_PADDING}px`,
         outlineStyle: "none",
+        borderTopStyle: "none",
+        borderRightStyle: "none",
+        borderBottomStyle: "none",
+        borderLeftStyle: "none",
+        boxShadow: "none",
+        backgroundColor: "transparent",
         scrollbarWidth: "none",
+        scrollbarColor: "transparent transparent",
         "::-webkit-scrollbar": {
-            display: "none"
+            display: "none",
+            width: "0",
+            height: "0"
+        },
+        "::-webkit-scrollbar-thumb": {
+            backgroundColor: "transparent"
+        },
+        "::-webkit-scrollbar-track": {
+            backgroundColor: "transparent"
         },
         ":focus-visible": {
             borderRadius: tokens.borderRadiusMedium,
@@ -62,6 +86,14 @@ const useStyles = makeStyles({
         cursor: "pointer",
         userSelect: "none",
         willChange: "transform, opacity",
+        borderTopStyle: "none",
+        borderRightStyle: "none",
+        borderBottomStyle: "none",
+        borderLeftStyle: "none",
+        boxShadow: "none",
+        backgroundColor: "transparent",
+        margin: "0",
+        padding: "0",
         color: tokens.colorNeutralForeground1,
         "@media (prefers-reduced-motion: reduce)": {
             // Without the shrinking-into-the-distance effect, lean on colour alone.

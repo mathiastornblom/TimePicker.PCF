@@ -98,6 +98,19 @@ name and both column types are unchanged, so forms that already use the componen
 working without being touched. Every parameter added in 2.0 is optional and defaults to
 the 1.x behaviour.
 
+After importing the solution, run **Publish all customizations** and then reopen the
+form designer in a fresh tab. Until you do, the designer keeps serving the old manifest
+and the component still shows its 1.x properties. The quickest tell is the Minute Value
+Field: it is optional in 2.0, so a red required asterisk beside it means you are still
+looking at the cached 1.x manifest.
+
+Existing forms need no other change. They reference the component by name rather than by
+version, so the new implementation is picked up once the customizations are published.
+Every property added in 2.0 takes its default on those forms, which is why they keep
+behaving as they did until you configure the new options. Canvas apps are the exception:
+they embed a copy of the component, so each one has to be opened in Studio, updated when
+prompted, then saved and published.
+
 Three things changed that are worth knowing about:
 
 - `minutevalue` is now optional rather than required. Existing forms already bind it, so

@@ -53,6 +53,7 @@ export class TimePicker implements ComponentFramework.StandardControl<IInputs, I
     private lastHostColumns: RawColumns | null = null;
     private warnedUnboundMinute = false;
     private portalWriteBack = false;
+    private hourLogicalName: string | undefined;
     private minuteLogicalName: string | undefined;
     private secondLogicalName: string | undefined;
 
@@ -110,12 +111,19 @@ export class TimePicker implements ComponentFramework.StandardControl<IInputs, I
         // unbound, and then minutes have nowhere to go and are silently dropped.
         const minuteBound = parameters.minutevalue?.attributes !== undefined;
         this.portalWriteBack = readBoolEnum(parameters.portalfieldwriteback?.raw, false);
-        // Hosts do not all report column metadata, so the maker can name the
-        // column explicitly and that wins when it is set.
+        // Power Pages reports the same column metadata for every bound property,
+        // namely the one the component sits on. Trusting it made the control write
+        // the minute into the hour column. Metadata is therefore only accepted when
+        // it actually differs from the hour column; otherwise the maker must name
+        // the column explicitly.
+        this.hourLogicalName = parameters.hourvalue?.attributes?.LogicalName;
+        const metadataName = (reported: string | undefined): string | undefined =>
+            reported && reported !== this.hourLogicalName ? reported : undefined;
+
         this.minuteLogicalName =
-            parameters.portalminutefieldname?.raw || parameters.minutevalue?.attributes?.LogicalName || undefined;
+            parameters.portalminutefieldname?.raw || metadataName(parameters.minutevalue?.attributes?.LogicalName);
         this.secondLogicalName =
-            parameters.portalsecondfieldname?.raw || parameters.secondvalue?.attributes?.LogicalName || undefined;
+            parameters.portalsecondfieldname?.raw || metadataName(parameters.secondvalue?.attributes?.LogicalName);
         if (this.storageMode === "hoursandminutes" && !minuteBound && !this.warnedUnboundMinute) {
             this.warnedUnboundMinute = true;
             // eslint-disable-next-line no-console
@@ -243,6 +251,7 @@ export class TimePicker implements ComponentFramework.StandardControl<IInputs, I
         trace("portal:writeback", {
             enabled: this.portalWriteBack,
             storageMode: this.storageMode,
+            hourLogicalName: this.hourLogicalName ?? null,
             minuteLogicalName: this.minuteLogicalName ?? null,
             secondLogicalName: this.secondLogicalName ?? null,
             outputs: this.outputs
@@ -257,6 +266,12 @@ export class TimePicker implements ComponentFramework.StandardControl<IInputs, I
         for (const [logicalName, value] of targets) {
             if (!logicalName || value === undefined) {
                 trace("portal:skipped", { logicalName: logicalName ?? null, value: value ?? null });
+                continue;
+            }
+            // Never touch the column the component sits on. The host owns that one,
+            // and writing to it is how the minute ended up overwriting the hour.
+            if (logicalName === this.hourLogicalName) {
+                trace("portal:refused", { logicalName, reason: "is the hour column" });
                 continue;
             }
             const input = findFieldInput(logicalName);

@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <manifest>
-  <control namespace="DR" constructor="TimePicker" version="2.4.0" display-name-key="TimePicker" description-key="Time picker control for model-driven apps, canvas apps and Power Pages" control-type="standard" preview-image="img/timepicker-preview.png">
+  <control namespace="DR" constructor="TimePicker" version="2.5.0" display-name-key="TimePicker" description-key="Time picker control for model-driven apps, canvas apps and Power Pages" control-type="standard" preview-image="img/timepicker-preview.png">
 
     <!-- Storage. In the default 'hoursandminutes' mode both columns are used and
          both are always written together. In 'minutesfrommidnight' mode only

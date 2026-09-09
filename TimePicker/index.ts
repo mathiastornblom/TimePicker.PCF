@@ -192,6 +192,16 @@ export class TimePicker implements ComponentFramework.StandardControl<IInputs, I
      * stricter about that than model-driven apps are.
      */
     public getOutputs(): IOutputs {
+        // With the Power Pages write back on, report only the column the
+        // component sits on. That host maps the outputs onto the single input it
+        // manages and picks the wrong one when handed more than one, so a time of
+        // 16:15 could land in the hour column as 15, and 16:00 as 0. The other
+        // columns are written into their own inputs instead.
+        if (this.portalWriteBack && this.storageMode === "hoursandminutes") {
+            trace("getOutputs", { mode: "portal", hourvalue: this.outputs.hourvalue });
+            return { hourvalue: this.outputs.hourvalue };
+        }
+
         trace("getOutputs", this.outputs);
         const outputs: IOutputs = { hourvalue: this.outputs.hourvalue };
         if (this.storageMode === "hoursandminutes") {

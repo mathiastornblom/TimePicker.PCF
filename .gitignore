@@ -20,3 +20,7 @@
 
 # playwright mcp scratch output
 /.playwright-mcp
+
+# macOS
+.DS_Store
+**/.DS_Store

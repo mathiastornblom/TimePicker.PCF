@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <manifest>
-  <control namespace="DR" constructor="TimePicker" version="2.2.0" display-name-key="TimePicker" description-key="Time picker control for model-driven apps, canvas apps and Power Pages" control-type="standard" preview-image="img/timepicker-preview.png">
+  <control namespace="DR" constructor="TimePicker" version="2.3.0" display-name-key="TimePicker" description-key="Time picker control for model-driven apps, canvas apps and Power Pages" control-type="standard" preview-image="img/timepicker-preview.png">
 
     <!-- Storage. In the default 'hoursandminutes' mode both columns are used and
          both are always written together. In 'minutesfrommidnight' mode only
@@ -57,6 +57,11 @@
       <value name="after" display-name-key="Own wheel, after the time" description-key="After" default="true">after</value>
       <value name="before" display-name-key="Own wheel, before the time" description-key="Before">before</value>
       <value name="inline" display-name-key="Inside the hour wheel" description-key="Inline">inline</value>
+    </property>
+
+    <property name="portalfieldwriteback" display-name-key="Power Pages Field Write Back" description-key="Power Pages posts only the column this component sits on, so the minute and second columns are lost on save. Switch this on, and put those columns on the form as well, to have the component write into them so they are submitted. Leave off for model-driven and canvas apps." of-type="Enum" usage="input" required="false">
+      <value name="true" display-name-key="true" description-key="True">true</value>
+      <value name="false" display-name-key="false" description-key="False" default="true">false</value>
     </property>
 
     <!-- Behaviour -->

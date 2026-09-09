@@ -20,6 +20,7 @@ import {
 import type { ColumnValues, FormatOptions, RawColumns, StorageMode } from "./lib/time";
 import { parseCssColor, parseOpacityPercent } from "./lib/appearance";
 import { trace } from "./lib/trace";
+import { findFieldInput, writeFieldInput } from "./lib/portalField";
 
 const APPEARANCES: readonly FieldAppearance[] = ["outline", "underline", "filled-darker", "filled-lighter"];
 const MERIDIEM_POSITIONS: readonly MeridiemPosition[] = ["after", "before", "inline"];
@@ -51,6 +52,9 @@ export class TimePicker implements ComponentFramework.StandardControl<IInputs, I
     /** What the host last reported, so a stale echo can be told from a real change. */
     private lastHostColumns: RawColumns | null = null;
     private warnedUnboundMinute = false;
+    private portalWriteBack = false;
+    private minuteLogicalName: string | undefined;
+    private secondLogicalName: string | undefined;
 
     private cachedHours: readonly number[] = [];
     private cachedMinutes: readonly number[] = [];
@@ -105,6 +109,9 @@ export class TimePicker implements ComponentFramework.StandardControl<IInputs, I
         // Since 2.0 the minute column is optional, so a form can be saved with it
         // unbound, and then minutes have nowhere to go and are silently dropped.
         const minuteBound = parameters.minutevalue?.attributes !== undefined;
+        this.portalWriteBack = readBoolEnum(parameters.portalfieldwriteback?.raw, false);
+        this.minuteLogicalName = parameters.minutevalue?.attributes?.LogicalName;
+        this.secondLogicalName = parameters.secondvalue?.attributes?.LogicalName;
         if (this.storageMode === "hoursandminutes" && !minuteBound && !this.warnedUnboundMinute) {
             this.warnedUnboundMinute = true;
             // eslint-disable-next-line no-console
@@ -204,12 +211,41 @@ export class TimePicker implements ComponentFramework.StandardControl<IInputs, I
     private handleChange = (value: number | null): void => {
         this.value = value;
         this.outputs = valueToColumns(value, this.storageMode, this.showSeconds);
+        this.writeBackToFormFields();
         // Nothing else happens here. The component paints the choice from its own
         // state, so there is no need to re-enter updateView from inside the host's
         // change callback, which risks confusing the host's own change tracking.
         trace("notifyOutputChanged", this.outputs);
         this.notifyOutputChanged();
     };
+
+    /**
+     * Put the columns the host will not write into their own form inputs.
+     *
+     * Only for Power Pages, only when the maker opts in, and only for columns
+     * other than the one the component sits on, which the host handles itself.
+     */
+    private writeBackToFormFields(): void {
+        if (!this.portalWriteBack || this.storageMode !== "hoursandminutes") {
+            return;
+        }
+        const targets: Array<[string | undefined, number | undefined]> = [
+            [this.minuteLogicalName, this.outputs.minutevalue],
+            [this.secondLogicalName, this.showSeconds ? this.outputs.secondvalue : undefined]
+        ];
+        for (const [logicalName, value] of targets) {
+            if (!logicalName || value === undefined) {
+                continue;
+            }
+            const input = findFieldInput(logicalName);
+            if (!input) {
+                trace("portal:field-missing", { logicalName });
+                continue;
+            }
+            const written = writeFieldInput(input, String(value));
+            trace("portal:field-written", { logicalName, value, written });
+        }
+    }
 
     /** Fluent v9 theme from the host, falling back to the light web theme in Power Pages. */
     private readTheme(context: ComponentFramework.Context<IInputs>): Theme {

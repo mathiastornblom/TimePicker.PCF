@@ -110,8 +110,12 @@ export class TimePicker implements ComponentFramework.StandardControl<IInputs, I
         // unbound, and then minutes have nowhere to go and are silently dropped.
         const minuteBound = parameters.minutevalue?.attributes !== undefined;
         this.portalWriteBack = readBoolEnum(parameters.portalfieldwriteback?.raw, false);
-        this.minuteLogicalName = parameters.minutevalue?.attributes?.LogicalName;
-        this.secondLogicalName = parameters.secondvalue?.attributes?.LogicalName;
+        // Hosts do not all report column metadata, so the maker can name the
+        // column explicitly and that wins when it is set.
+        this.minuteLogicalName =
+            parameters.portalminutefieldname?.raw || parameters.minutevalue?.attributes?.LogicalName || undefined;
+        this.secondLogicalName =
+            parameters.portalsecondfieldname?.raw || parameters.secondvalue?.attributes?.LogicalName || undefined;
         if (this.storageMode === "hoursandminutes" && !minuteBound && !this.warnedUnboundMinute) {
             this.warnedUnboundMinute = true;
             // eslint-disable-next-line no-console
@@ -226,6 +230,13 @@ export class TimePicker implements ComponentFramework.StandardControl<IInputs, I
      * other than the one the component sits on, which the host handles itself.
      */
     private writeBackToFormFields(): void {
+        trace("portal:writeback", {
+            enabled: this.portalWriteBack,
+            storageMode: this.storageMode,
+            minuteLogicalName: this.minuteLogicalName ?? null,
+            secondLogicalName: this.secondLogicalName ?? null,
+            outputs: this.outputs
+        });
         if (!this.portalWriteBack || this.storageMode !== "hoursandminutes") {
             return;
         }
@@ -235,6 +246,7 @@ export class TimePicker implements ComponentFramework.StandardControl<IInputs, I
         ];
         for (const [logicalName, value] of targets) {
             if (!logicalName || value === undefined) {
+                trace("portal:skipped", { logicalName: logicalName ?? null, value: value ?? null });
                 continue;
             }
             const input = findFieldInput(logicalName);

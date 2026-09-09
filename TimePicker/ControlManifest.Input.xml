@@ -1,17 +1,18 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <manifest>
-  <control namespace="DR" constructor="TimePicker" version="2.6.0" display-name-key="TimePicker" description-key="Time picker control for model-driven apps, canvas apps and Power Pages" control-type="standard" preview-image="img/timepicker-preview.png">
+  <control namespace="DR" constructor="TimePicker" version="2.7.0" display-name-key="TimePicker" description-key="Time picker control for model-driven apps, canvas apps and Power Pages" control-type="standard" preview-image="img/timepicker-preview.png">
 
     <!-- Storage. In the default 'hoursandminutes' mode both columns are used and
          both are always written together. In 'minutesfrommidnight' mode only
          hourvalue is used, for makers who would rather bind one column than two. -->
-    <property name="hourvalue" display-name-key="Hour Value Field" description-key="Bind to the whole number column holding the hour. In Minutes from midnight storage mode this column holds the whole time instead." of-type="Whole.None" usage="bound" required="true" />
+    <property name="hourvalue" display-name-key="Hour Value Field" description-key="The column the time is stored in. In Separate columns mode it holds the hour, 0 to 23. In the one column modes it holds the whole time, as minutes or seconds from midnight." of-type="Whole.None" usage="bound" required="true" />
     <property name="minutevalue" display-name-key="Minute Value Field" description-key="Bind to the whole number column holding the minute. Required, because Power Pages writes back only bound columns that are marked required." of-type="Whole.None" usage="bound" required="true" />
     <property name="secondvalue" display-name-key="Second Value Field" description-key="(Optional) Bind to a whole number column holding the second, 0-59. Only used when the seconds wheel is switched on." of-type="Whole.None" usage="bound" required="false" />
 
-    <property name="storagemode" display-name-key="Storage Mode" description-key="How the time is stored. Hours and minutes uses both columns and is the default. Minutes from midnight keeps the whole time in the hour column and ignores the minute column." of-type="Enum" usage="input" required="false">
-      <value name="hoursandminutes" display-name-key="Hours and minutes (2 columns)" description-key="Hours and minutes" default="true">hoursandminutes</value>
-      <value name="minutesfrommidnight" display-name-key="Minutes from midnight (1 column)" description-key="Minutes from midnight">minutesfrommidnight</value>
+    <property name="storagemode" display-name-key="Storage Mode" description-key="How the time is stored. Separate columns uses one column per part and works only where every bound column is written, which means Dynamics. The one column modes keep the whole time in the first column and work everywhere, including Power Pages." of-type="Enum" usage="input" required="false">
+      <value name="hoursandminutes" display-name-key="Separate columns (Dynamics only)" description-key="Separate columns" default="true">hoursandminutes</value>
+      <value name="minutesfrommidnight" display-name-key="One column, minutes from midnight" description-key="One column holding minutes from midnight, 0 to 1439">minutesfrommidnight</value>
+      <value name="secondsfrommidnight" display-name-key="One column, seconds from midnight" description-key="One column holding seconds from midnight, 0 to 86399. Supports the seconds wheel.">secondsfrommidnight</value>
     </property>
 
     <!-- Display -->

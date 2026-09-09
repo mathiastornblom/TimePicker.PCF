@@ -11,7 +11,18 @@ export const MINUTES_PER_DAY = 1440;
 export const SECONDS_PER_DAY = 86400;
 
 /** How the time is persisted in Dataverse. */
-export type StorageMode = "hoursandminutes" | "minutesfrommidnight";
+export type StorageMode = "hoursandminutes" | "minutesfrommidnight" | "secondsfrommidnight";
+
+/**
+ * Whether a mode keeps the whole time in one column.
+ *
+ * One column is the only shape every Power Platform host supports. A host that
+ * renders one input per form field, as Power Pages does, can only ever post the
+ * column the component sits on, so any second or third bound column is lost.
+ */
+export function isSingleColumn(mode: StorageMode): boolean {
+    return mode === "minutesfrommidnight" || mode === "secondsfrommidnight";
+}
 
 export interface TimeParts {
     hours: number;
@@ -61,6 +72,9 @@ export function columnsToValue(
     const m = minute ?? null;
     const s = second ?? null;
 
+    if (mode === "secondsfrommidnight") {
+        return h === null ? null : wrapSeconds(h);
+    }
     if (mode === "minutesfrommidnight") {
         return h === null ? null : wrapSeconds(h * SECONDS_PER_MINUTE);
     }
@@ -95,6 +109,9 @@ export function valueToColumns(
             minutevalue: undefined,
             secondvalue: withSeconds ? undefined : undefined
         };
+    }
+    if (mode === "secondsfrommidnight") {
+        return { hourvalue: wrapSeconds(secondsOfDay), minutevalue: undefined, secondvalue: undefined };
     }
     if (mode === "minutesfrommidnight") {
         return {

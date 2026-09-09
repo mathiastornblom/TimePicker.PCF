@@ -20,6 +20,7 @@ import {
 import type { ColumnValues, FormatOptions, RawColumns, StorageMode } from "./lib/time";
 import { parseCssColor, parseOpacityPercent } from "./lib/appearance";
 import { trace } from "./lib/trace";
+import { isSingleColumn } from "./lib/time";
 import { findFieldInput, writeFieldInput } from "./lib/portalField";
 
 const APPEARANCES: readonly FieldAppearance[] = ["outline", "underline", "filled-darker", "filled-lighter"];
@@ -89,7 +90,7 @@ export class TimePicker implements ComponentFramework.StandardControl<IInputs, I
 
         this.storageMode = readEnum<StorageMode>(
             parameters.storagemode?.raw,
-            ["hoursandminutes", "minutesfrommidnight"],
+            ["hoursandminutes", "minutesfrommidnight", "secondsfrommidnight"],
             "hoursandminutes"
         );
 
@@ -205,7 +206,7 @@ export class TimePicker implements ComponentFramework.StandardControl<IInputs, I
         // manages and picks the wrong one when handed more than one, so a time of
         // 16:15 could land in the hour column as 15, and 16:00 as 0. The other
         // columns are written into their own inputs instead.
-        if (this.portalWriteBack && this.storageMode === "hoursandminutes") {
+        if (this.portalWriteBack && !isSingleColumn(this.storageMode)) {
             trace("getOutputs", { mode: "portal", hourvalue: this.outputs.hourvalue });
             return { hourvalue: this.outputs.hourvalue };
         }
@@ -256,7 +257,9 @@ export class TimePicker implements ComponentFramework.StandardControl<IInputs, I
             secondLogicalName: this.secondLogicalName ?? null,
             outputs: this.outputs
         });
-        if (!this.portalWriteBack || this.storageMode !== "hoursandminutes") {
+        // Only the separate-column shape ever needed this. The one column modes
+        // post the whole time in the column the component sits on.
+        if (!this.portalWriteBack || isSingleColumn(this.storageMode)) {
             return;
         }
         const targets: Array<[string | undefined, number | undefined]> = [

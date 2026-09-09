@@ -17,6 +17,7 @@ import {
     fromParts,
     hostValueChanged,
     is12HourPattern,
+    isSingleColumn,
     nearestOption,
     nowSecondsOfDay,
     parseTime,
@@ -282,4 +283,34 @@ test("a genuine change from the host is adopted", () => {
     assert.equal(hostValueChanged(previous, { hour: 9, minute: 45, second: null }), true);
     assert.equal(hostValueChanged(previous, { hour: 9, minute: 30, second: 15 }), true);
     assert.equal(hostValueChanged(previous, { hour: null, minute: null, second: null }), true);
+});
+
+test("one column can hold the whole time to the second", () => {
+    // 16:15:45 as seconds from midnight.
+    assert.equal(columnsToValue("secondsfrommidnight", 58545, null, null), at(16, 15, 45));
+    assert.equal(columnsToValue("secondsfrommidnight", 0, null, null), 0);
+    assert.equal(columnsToValue("secondsfrommidnight", null, null, null), null);
+    assert.equal(columnsToValue("secondsfrommidnight", 86400 + 60, null, null), at(0, 1, 0));
+});
+
+test("one column mode writes only that column", () => {
+    assert.deepEqual(valueToColumns(at(16, 15, 45), "secondsfrommidnight", true), {
+        hourvalue: 58545, minutevalue: undefined, secondvalue: undefined
+    });
+    assert.deepEqual(valueToColumns(null, "secondsfrommidnight", true), {
+        hourvalue: undefined, minutevalue: undefined, secondvalue: undefined
+    });
+});
+
+test("minutes from midnight still rounds seconds away, seconds from midnight keeps them", () => {
+    assert.deepEqual(valueToColumns(at(16, 15, 45), "minutesfrommidnight"), {
+        hourvalue: 975, minutevalue: undefined, secondvalue: undefined
+    });
+    assert.equal(valueToColumns(at(16, 15, 45), "secondsfrommidnight").hourvalue, 58545);
+});
+
+test("single column modes are recognised as such", () => {
+    assert.equal(isSingleColumn("hoursandminutes"), false);
+    assert.equal(isSingleColumn("minutesfrommidnight"), true);
+    assert.equal(isSingleColumn("secondsfrommidnight"), true);
 });

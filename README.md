@@ -25,21 +25,36 @@ old time and saved a blank one.
 ## Storage modes
 
 The component reads and writes whole number columns. Which columns it uses is set by
-the **Storage Mode** property.
+the **Storage Mode** property, and this choice decides where the component can be used.
 
-**Hours and minutes**, the default, uses two columns, or three with seconds switched
-on. `hourvalue` holds 0-23, `minutevalue` holds 0-59, and `secondvalue` holds 0-59.
-The second column is only written when the seconds wheel is on, so records that do not
-track seconds are left alone. Both columns are always written together, so choosing an
-hour can never leave the minute column empty. A record that already holds only one of
-the two is read as a real time, with the missing half treated as zero, and is left
-untouched until the user actually changes the value.
+**One column, seconds from midnight** is the recommended mode. A single whole number
+column holds the whole time, 0 to 86399, and it supports the hour, minute and second
+wheels. **One column, minutes from midnight** is the same idea without seconds, 0 to
+1439. In both, bind the column to Hour Value Field and leave the others empty.
 
-**Minutes from midnight** uses one column and does not carry seconds. `hourvalue` holds
-0-1439 and the other columns are left unbound. Use it when you would rather keep one column than two, or if you hit
-the multi-column binding limitation that the Power Pages documentation describes. The
-two column mode is known to work on Power Pages in practice, so this is an option
-rather than a requirement.
+**Separate columns** keeps one column per part: hours 0 to 23, minutes 0 to 59 and,
+with the seconds wheel on, seconds 0 to 59. Both columns are always written together,
+so choosing an hour can never leave the minute empty, and a record holding only one of
+them is read as a real time rather than being thrown away.
+
+### Why one column matters
+
+Separate columns work in model-driven apps and canvas apps, which write every bound
+column. They do not work in Power Pages, which renders one input per field on the form
+and posts only the column the component sits on. Anything in a second or third bound
+column is silently dropped on save. Microsoft documents this as components bound to
+multiple fields not being supported there.
+
+If you need Power Pages, use one of the single column modes. Existing data migrates
+with `hour * 3600 + minute * 60 + second` for seconds from midnight, or
+`hour * 60 + minute` for minutes from midnight.
+
+The **Power Pages Field Write Back** property exists as a fallback for keeping separate
+columns on a portal. It requires the other columns to be on the form, their logical
+names typed into the matching properties, and CSS to hide them, because Power Pages
+reports the wrong column metadata to the component and will not render a field that is
+not on the form. It works, but it is a workaround for a platform limitation rather than
+a design, and a single column avoids all of it.
 
 ## Parameters
 

@@ -182,7 +182,9 @@ export const TimePickerControl: React.FC<TimePickerControlProps> = (props) => {
     const now = toParts(nowSeconds);
     const fallbackHour = nearestOption(hours, now.hours) ?? 0;
     const fallbackMinute = nearestOption(minutes, now.minutes) ?? 0;
-    const fallbackSecond = nearestOption(seconds, now.seconds) ?? 0;
+    // Seconds default to 0, not "now", when the column isn't shown — otherwise
+    // picking just an hour/minute silently bakes the current second into the value.
+    const fallbackSecond = showSeconds ? nearestOption(seconds, now.seconds) ?? 0 : 0;
 
     const parts =
         chosen === null

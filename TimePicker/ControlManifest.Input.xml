@@ -1,11 +1,11 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <manifest>
-  <control namespace="DR" constructor="TimePicker" version="2.7.1" display-name-key="TimePicker" description-key="Time picker control for model-driven apps, canvas apps and Power Pages" control-type="standard" preview-image="img/timepicker-preview.png">
+  <control namespace="DR" constructor="TimePicker" version="2.8.0" display-name-key="TimePicker" description-key="Time picker control for model-driven apps, canvas apps and Power Pages" control-type="standard" preview-image="img/timepicker-preview.png">
 
     <!-- Storage. In the default 'hoursandminutes' mode both columns are used and
          both are always written together. In 'minutesfrommidnight' mode only
          hourvalue is used, for makers who would rather bind one column than two. -->
-    <property name="hourvalue" display-name-key="Hour Value Field" description-key="The column the time is stored in, and the only one required. In Separate columns mode it holds the hour, 0 to 23. In the one column modes it holds the whole time, as minutes or seconds from midnight." of-type="Whole.None" usage="bound" required="true" />
+    <property name="hourvalue" display-name-key="Time Value Field" description-key="The column the time is stored in, and the only one required. In Separate columns mode it holds the hour, 0 to 23. In the one column modes it holds the whole time, as minutes or seconds from midnight." of-type="Whole.None" usage="bound" required="true" />
     <property name="minutevalue" display-name-key="Minute Value Field" description-key="Only used in Separate columns storage mode, where it holds the minute, 0 to 59. Leave empty in the one column modes, which keep the whole time in the first column." of-type="Whole.None" usage="bound" required="false" />
     <property name="secondvalue" display-name-key="Second Value Field" description-key="Only used in Separate columns storage mode with the seconds wheel on, where it holds the second, 0 to 59. Leave empty in the one column modes." of-type="Whole.None" usage="bound" required="false" />
 
@@ -60,13 +60,13 @@
       <value name="inline" display-name-key="Inside the hour wheel" description-key="Inline">inline</value>
     </property>
 
-    <property name="portalfieldwriteback" display-name-key="Power Pages Field Write Back" description-key="Power Pages posts only the column this component sits on, so the minute and second columns are lost on save. Switch this on, and put those columns on the form as well, to have the component write into them so they are submitted. Leave off for model-driven and canvas apps." of-type="Enum" usage="input" required="false">
+    <property name="portalfieldwriteback" display-name-key="Write Other Columns (Power Pages)" description-key="Power Pages posts only the column this component sits on, so the minute and second columns are lost on save. Switch this on, and put those columns on the form as well, to have the component write into them so they are submitted. Leave off for model-driven and canvas apps." of-type="Enum" usage="input" required="false">
       <value name="true" display-name-key="true" description-key="True">true</value>
       <value name="false" display-name-key="false" description-key="False" default="true">false</value>
     </property>
 
-    <property name="portalminutefieldname" display-name-key="Power Pages Minute Column Name" description-key="Logical name of the minute column, for example new_showtimeminute. Required with Power Pages Field Write Back on, because Power Pages reports the same column metadata for every bound property and the control cannot discover it." of-type="SingleLine.Text" usage="input" required="false" />
-    <property name="portalsecondfieldname" display-name-key="Power Pages Second Column Name" description-key="(Optional) Logical name of the second column. Only needed with Power Pages Field Write Back on and the seconds wheel in use." of-type="SingleLine.Text" usage="input" required="false" />
+    <property name="portalminutefieldname" display-name-key="Minute Column Name (Power Pages)" description-key="Logical name of the minute column, for example new_showtimeminute. Required with Power Pages Field Write Back on, because Power Pages reports the same column metadata for every bound property and the control cannot discover it." of-type="SingleLine.Text" usage="input" required="false" />
+    <property name="portalsecondfieldname" display-name-key="Second Column Name (Power Pages)" description-key="(Optional) Logical name of the second column. Only needed with Power Pages Field Write Back on and the seconds wheel in use." of-type="SingleLine.Text" usage="input" required="false" />
 
     <!-- Behaviour -->
     <property name="editenabled" display-name-key="Edit Enabled" description-key="Allow the user to type a time as well as pick one (default = false)" of-type="Enum" usage="input" required="true">

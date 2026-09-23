@@ -1,6 +1,5 @@
 import * as React from "react";
 import { makeStyles, mergeClasses, tokens, useId } from "@fluentui/react-components";
-import { trace } from "../lib/trace";
 
 /** Height of a single row, in pixels. Also the scroll snap interval. */
 export const ITEM_HEIGHT = 36;
@@ -276,24 +275,21 @@ export const WheelColumn: React.FC<WheelColumnProps> = (props) => {
                 return;
             }
             if (!userDriven.current) {
-                trace("wheel:settle-ignored", { label, reason: "no gesture" });
                 return;
             }
             // A scroller with no layout, because the popover is closing or hidden,
             // reports scrollTop 0 and would commit the first row.
             if (scroller.clientHeight === 0 || scroller.offsetParent === null) {
-                trace("wheel:settle-ignored", { label, reason: "no layout" });
                 return;
             }
             userDriven.current = false;
             const index = Math.min(values.length - 1, Math.max(0, Math.round(scroller.scrollTop / ITEM_HEIGHT)));
             const value = values[index];
-            trace("wheel:settle", { label, index, value, selected });
             if (value !== undefined && value !== selected) {
                 onSelect(value);
             }
         }, 140);
-    }, [label, onSelect, paint, selected, values]);
+    }, [onSelect, paint, selected, values]);
 
     /**
      * Watch for the gestures that mean the user is spinning this wheel.
@@ -309,9 +305,8 @@ export const WheelColumn: React.FC<WheelColumnProps> = (props) => {
         if (!scroller) {
             return undefined;
         }
-        const mark = (event: Event) => {
+        const mark = () => {
             userDriven.current = true;
-            trace("wheel:gesture", { label, type: event.type });
         };
         const events = ["pointerdown", "mousedown", "touchstart", "touchmove", "wheel", "keydown"];
         const options: AddEventListenerOptions = { capture: true, passive: true };

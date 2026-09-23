@@ -60,10 +60,10 @@ a design, and a single column avoids all of it.
 
 | Parameter | Description | Default |
 |---|---|---|
-| `hourvalue` | Whole number column holding the hour, or the whole time in single column mode | required |
-| `minutevalue` | Whole number column holding the minute. Leave unbound in single column mode | optional |
-| `secondvalue` | Whole number column holding the second, 0-59. Only used when the seconds wheel is on | optional |
-| `storagemode` | `Hours and minutes` (two columns) or `Minutes from midnight` (one column) | Hours and minutes |
+| `hourvalue` | The column the time lives in. The hour in Separate columns mode, the whole time in the one column modes | required |
+| `minutevalue` | Minute column. Only used in Separate columns mode | optional |
+| `secondvalue` | Second column. Only used in Separate columns mode with the seconds wheel on | optional |
+| `storagemode` | `Separate columns`, `One column, minutes from midnight`, or `One column, seconds from midnight` | Separate columns |
 | `displaytype` | `12 hrs`, `24 hrs`, or `Auto` to follow the user's regional settings | 24 hrs |
 | `fieldappearance` | `outline`, `underline`, `filled-darker` or `filled-lighter` | outline |
 | `placeholdertext` | Text shown when no time is set | none |

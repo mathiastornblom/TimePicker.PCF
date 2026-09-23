@@ -19,7 +19,6 @@ import {
 } from "./lib/time";
 import type { ColumnValues, FormatOptions, RawColumns, StorageMode } from "./lib/time";
 import { parseCssColor, parseOpacityPercent } from "./lib/appearance";
-import { trace } from "./lib/trace";
 import { isSingleColumn } from "./lib/time";
 import { findFieldInput, writeFieldInput } from "./lib/portalField";
 
@@ -71,7 +70,6 @@ export class TimePicker implements ComponentFramework.StandardControl<IInputs, I
     ): void {
         this.notifyOutputChanged = notifyOutputChanged;
         container.style.width = "100%";
-        trace("init");
         this.root = createRoot(container);
     }
 
@@ -127,14 +125,12 @@ export class TimePicker implements ComponentFramework.StandardControl<IInputs, I
             parameters.portalsecondfieldname?.raw || metadataName(parameters.secondvalue?.attributes?.LogicalName);
         if (this.storageMode === "hoursandminutes" && !minuteBound && !this.warnedUnboundMinute) {
             this.warnedUnboundMinute = true;
-            // eslint-disable-next-line no-console
             console.warn(
                 "DR.TimePicker: the Minute Value Field is not bound to a column. " +
                     "Hours will be saved and minutes will be discarded. Bind it on the form, " +
                     "or switch Storage Mode to Minutes from midnight."
             );
         }
-        trace("updateView", { incoming, held: this.value, minuteBound });
         if (hostValueChanged(this.lastHostColumns, incoming)) {
             this.value = columnsToValue(this.storageMode, incoming.hour, incoming.minute, incoming.second);
             this.lastHostColumns = incoming;
@@ -207,11 +203,9 @@ export class TimePicker implements ComponentFramework.StandardControl<IInputs, I
         // 16:15 could land in the hour column as 15, and 16:00 as 0. The other
         // columns are written into their own inputs instead.
         if (this.portalWriteBack && !isSingleColumn(this.storageMode)) {
-            trace("getOutputs", { mode: "portal", hourvalue: this.outputs.hourvalue });
             return { hourvalue: this.outputs.hourvalue };
         }
 
-        trace("getOutputs", this.outputs);
         const outputs: IOutputs = { hourvalue: this.outputs.hourvalue };
         if (this.storageMode === "hoursandminutes") {
             outputs.minutevalue = this.outputs.minutevalue;
@@ -238,7 +232,6 @@ export class TimePicker implements ComponentFramework.StandardControl<IInputs, I
         // Nothing else happens here. The component paints the choice from its own
         // state, so there is no need to re-enter updateView from inside the host's
         // change callback, which risks confusing the host's own change tracking.
-        trace("notifyOutputChanged", this.outputs);
         this.notifyOutputChanged();
     };
 
@@ -249,14 +242,6 @@ export class TimePicker implements ComponentFramework.StandardControl<IInputs, I
      * other than the one the component sits on, which the host handles itself.
      */
     private writeBackToFormFields(): void {
-        trace("portal:writeback", {
-            enabled: this.portalWriteBack,
-            storageMode: this.storageMode,
-            hourLogicalName: this.hourLogicalName ?? null,
-            minuteLogicalName: this.minuteLogicalName ?? null,
-            secondLogicalName: this.secondLogicalName ?? null,
-            outputs: this.outputs
-        });
         // Only the separate-column shape ever needed this. The one column modes
         // post the whole time in the column the component sits on.
         if (!this.portalWriteBack || isSingleColumn(this.storageMode)) {
@@ -268,22 +253,18 @@ export class TimePicker implements ComponentFramework.StandardControl<IInputs, I
         ];
         for (const [logicalName, value] of targets) {
             if (!logicalName || value === undefined) {
-                trace("portal:skipped", { logicalName: logicalName ?? null, value: value ?? null });
                 continue;
             }
             // Never touch the column the component sits on. The host owns that one,
             // and writing to it is how the minute ended up overwriting the hour.
             if (logicalName === this.hourLogicalName) {
-                trace("portal:refused", { logicalName, reason: "is the hour column" });
                 continue;
             }
             const input = findFieldInput(logicalName);
             if (!input) {
-                trace("portal:field-missing", { logicalName });
                 continue;
             }
-            const written = writeFieldInput(input, String(value));
-            trace("portal:field-written", { logicalName, value, written });
+            writeFieldInput(input, String(value));
         }
     }
 
